@@ -240,8 +240,16 @@ FOUNDRY_PROFILE=ci forge test             # 1024 fuzz runs, deeper invariant run
 
 If you cloned without `--recursive`, run `git submodule update --init --recursive`. The profiles
 differ only in the denomination table of the Shapes build the local tests deploy and in the
-fuzz and invariant depth; the pack contract is the same bytecode. The fork test is gated on an
-environment variable and runs the lifecycle against the deployed mainnet Shapes.
+fuzz and invariant depth; the pack contract is the same bytecode. The fork test is gated on
+`MAINNET_RPC_URL` and runs the lifecycle against the deployed mainnet Shapes:
+
+```sh
+MAINNET_RPC_URL=https://ethereum-rpc.publicnode.com forge test --mc ForkTest
+```
+
+To look at the artwork without deploying anything, `forge script script/Preview.s.sol` writes the
+`tokenURI` of a one-, three- and ten-Shape pack and the `contractURI` to `preview/` from a
+throwaway local Shapes. Decode the base64 JSON and its `image` field to get the SVGs.
 
 ## Deploying
 

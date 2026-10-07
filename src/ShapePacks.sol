@@ -4,6 +4,7 @@ pragma solidity 0.8.28;
 import {ERC721} from "@openzeppelin/contracts/token/ERC721/ERC721.sol";
 import {IERC721} from "@openzeppelin/contracts/token/ERC721/IERC721.sol";
 import {IERC721Receiver} from "@openzeppelin/contracts/token/ERC721/IERC721Receiver.sol";
+import {ERC165Checker} from "@openzeppelin/contracts/utils/introspection/ERC165Checker.sol";
 import {IERC165} from "@openzeppelin/contracts/utils/introspection/IERC165.sol";
 import {IERC2981} from "@openzeppelin/contracts/interfaces/IERC2981.sol";
 import {ReentrancyGuard} from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
@@ -78,10 +79,9 @@ contract ShapePacks is ERC721, IShapePacks, IERC2981, IERC721Receiver, Reentranc
     /// @param renderer_ The initial renderer. Must answer ERC-165 for `IShapePackRenderer`.
     /// @param admin_ The presentation admin. Nonzero.
     constructor(address shapes_, address renderer_, address admin_) ERC721("Shape Packs", "PACK") {
-        if (shapes_.code.length == 0) revert UnsupportedShapes(shapes_);
-        try IERC165(shapes_).supportsInterface(type(IShapes).interfaceId) returns (bool ok) {
-            if (!ok) revert UnsupportedShapes(shapes_);
-        } catch {
+        // `ERC165Checker` treats a revert, a silent fallback and malformed return data alike, so
+        // every way of not being Shapes fails with the same error.
+        if (!ERC165Checker.supportsInterface(shapes_, type(IShapes).interfaceId)) {
             revert UnsupportedShapes(shapes_);
         }
         _requireRenderer(renderer_);
@@ -482,10 +482,7 @@ contract ShapePacks is ERC721, IShapePacks, IERC2981, IERC721Receiver, Reentranc
     }
 
     function _requireRenderer(address r) internal view {
-        if (r.code.length == 0) revert UnsupportedRenderer(r);
-        try IERC165(r).supportsInterface(type(IShapePackRenderer).interfaceId) returns (bool ok) {
-            if (!ok) revert UnsupportedRenderer(r);
-        } catch {
+        if (!ERC165Checker.supportsInterface(r, type(IShapePackRenderer).interfaceId)) {
             revert UnsupportedRenderer(r);
         }
     }

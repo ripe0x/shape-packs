@@ -31,9 +31,9 @@ contract ShapePackRenderer is IShapePackRenderer, IERC165 {
     uint256 private constant FRONT_X = 920;
     uint256 private constant FRONT_Y = 520;
     /// @dev Fan step per drawn card, up and to the left, and its rotation in degrees.
-    uint256 private constant FAN_DX = 140;
-    uint256 private constant FAN_DY = 96;
-    uint256 private constant FAN_DEG = 6;
+    uint256 private constant FAN_DX = 120;
+    uint256 private constant FAN_DY = 84;
+    uint256 private constant FAN_DEG = 5;
     /// @dev Offset per card back, up and to the left, and the most backs ever drawn.
     uint256 private constant BACK_STEP = 48;
     uint256 private constant MAX_BACKS = 4;
@@ -222,9 +222,9 @@ contract ShapePackRenderer is IShapePackRenderer, IERC165 {
     ///      black cards sit behind the last drawn card, continuing its fan, each a step further up
     ///      and to the left, so a deep pack reads as a thick stack behind the cards that show.
     function _stack(string[] memory cards, uint256 backs) private pure returns (string memory) {
+        uint256 last = cards.length == 0 ? 0 : cards.length - 1;
         bytes memory body;
         if (backs > 0) {
-            uint256 last = cards.length == 0 ? 0 : cards.length - 1;
             body = abi.encodePacked(body, "<g", _fan(last), ">");
             for (uint256 k = backs; k > 0; --k) {
                 body = abi.encodePacked(body, _back(k));
@@ -234,7 +234,20 @@ contract ShapePackRenderer is IShapePackRenderer, IERC165 {
         for (uint256 i = cards.length; i > 0; --i) {
             body = abi.encodePacked(body, _card(i - 1, cards[i - 1]));
         }
-        return string(abi.encodePacked(_open(cards.length), body, "</svg>"));
+        // The fan spreads up and to the left of the front card; shift the whole stack by half
+        // that spread so the composition stays centred on the canvas.
+        return string(
+            abi.encodePacked(
+                _open(cards.length),
+                '<g transform="translate(',
+                FixedPoint.toString((last * FAN_DX + backs * BACK_STEP) / 2),
+                ",",
+                FixedPoint.toString((last * FAN_DY + backs * BACK_STEP) / 2),
+                ')">',
+                body,
+                "</g></svg>"
+            )
+        );
     }
 
     /// @dev The fan transform for drawn card `i`: up-left by `i` steps and tilted about the front

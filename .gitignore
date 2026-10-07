@@ -8,3 +8,4 @@ broadcast/
 !script/env/*.env
 node_modules/
 lcov.info
+preview/

@@ -259,7 +259,8 @@ script/deploy.sh <anvil|sepolia|mainnet>
 ```
 
 `script/deploy.sh` sources `script/env/<target>.env` (values only, no secrets), requires an RPC URL,
-and runs `forge script script/Deploy.s.sol --broadcast`. For `sepolia` and `mainnet` it adds `--verify`
+runs `forge clean`, then runs `forge script script/Deploy.s.sol --broadcast`. For `sepolia` and
+`mainnet` it adds `--verify`
 and requires `ETHERSCAN_API_KEY`. Run these public-chain targets from the primary checkout on
 `main`; the wrapper refuses linked worktrees and other branches.
 

@@ -98,6 +98,8 @@ else
   fi
 fi
 
+# Compile every attempt, including dry runs, from a clean Foundry cache.
+forge clean
 echo "target=$TARGET chain=$CHAIN_ID profile=$FOUNDRY_PROFILE shapes=$SHAPES admin=${ADMIN:-<broadcaster>}"
 forge script "${ARGS[@]}"
 

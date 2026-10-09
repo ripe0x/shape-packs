@@ -8,9 +8,8 @@ import {IShapePacks} from "../src/interfaces/IShapePacks.sol";
 import {ShapePackRenderer} from "../src/ShapePackRenderer.sol";
 import {ShapePacks} from "../src/ShapePacks.sol";
 
-/// @notice Deploys `ShapePackRenderer` and `ShapePacks` against an already-deployed Shapes token,
-///         reads every constructor input back from the simulated state. The shell wrapper records
-///         verified onchain results in `deployments/<chainId>.json` after broadcast succeeds.
+/// @notice Deploys `ShapePackRenderer` and `ShapePacks` against an existing Shapes token and
+///         checks their constructor state in the same run.
 ///
 /// @dev One script for every chain. The chain id decides which Shapes address is acceptable;
 ///      every other input is a value passed in the environment (see script/deploy.sh and
@@ -20,8 +19,8 @@ import {ShapePacks} from "../src/ShapePacks.sol";
 ///                 collection, `MAINNET_SHAPES`. On Sepolia and anvil any nonzero address is
 ///                 accepted (anvil: whatever the local flow deployed).
 ///        ADMIN    the presentation admin of `ShapePacks`. Defaults to the broadcaster when unset
-///                 or zero. The admin reaches the renderer and the metadata copy only, never
-///                 custody; hold it in a multisig and lock presentation once the art is final.
+///                 or zero. The admin can change the renderer, preview limit and metadata copy,
+///                 or lock presentation. It has no custody authority.
 ///
 ///      The deployer is the account that signs the broadcast.
 contract Deploy is Script {
@@ -31,6 +30,9 @@ contract Deploy is Script {
     uint256 internal constant SEPOLIA = 11155111;
     uint256 internal constant ANVIL = 31337;
 
+    /// @notice Deploys the renderer and pack collection, then checks their live constructor state.
+    /// @return renderer The newly deployed pack renderer.
+    /// @return packs The newly deployed pack collection.
     function run() external returns (ShapePackRenderer renderer, ShapePacks packs) {
         address shapes = vm.envAddress("SHAPES");
         _requireShapesForChain(shapes);

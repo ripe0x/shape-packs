@@ -17,6 +17,7 @@ contract Preview is Script {
     /// @dev Everything runs as a funded EOA, since a script contract's own address is ephemeral.
     address internal constant USER = address(0xBEEF);
 
+    /// @notice Builds local one- through twelve-Shape packs and writes their metadata URIs.
     function run() external {
         vm.deal(USER, 10_000 ether);
         vm.startPrank(USER);
@@ -50,12 +51,14 @@ contract Preview is Script {
         vm.stopPrank();
     }
 
+    /// @dev Includes each Shape's backing and the live Shapes mint fee.
     function _cost(Shapes shapes, uint32[] memory counts) private view returns (uint256 total) {
         for (uint256 d = 0; d < counts.length; ++d) {
             total += uint256(counts[d]) * (Denominations.amountAt(d) + shapes.mintFee());
         }
     }
 
+    /// @dev Saves the pack URI under the supplied preview filename.
     function _write(ShapePacks packs, uint256 packId, string memory name) private {
         vm.writeFile(string.concat("preview/", name, ".uri.txt"), packs.tokenURI(packId));
     }

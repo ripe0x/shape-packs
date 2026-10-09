@@ -6,17 +6,17 @@
 #   script/deploy.sh <anvil|sepolia|mainnet>
 #
 # Environment:
-#   RPC_URL               RPC endpoint. Defaults to the env file's RPC_DEFAULT.
+#   RPC_URL               RPC endpoint. Public chains require the Tenderly URL in their env file.
 #   SHAPES / ADMIN        override the env file. SHAPES is required (anvil: the local Shapes you
 #                         deployed). ADMIN defaults to the broadcaster when empty.
 #   PRIVATE_KEY           signer for sepolia and mainnet, or
 #   KEYSTORE_ACCOUNT      a foundry keystore name (~/.foundry/keystores/<name>); forge prompts for
 #                         the password, or reads KEYSTORE_PASSWORD_FILE if set.
 #                         anvil needs neither: it uses anvil's well-known account 0 key.
-#   ETHERSCAN_API_KEY     required for sepolia and mainnet (--verify).
+#   ETHERSCAN_API_KEY     used later by script/verify_renderer.py, not by this broadcast.
 #   GAS_ESTIMATE_MULTIPLIER  Sepolia env value for post-Glamsterdam creation gas.
-#   FOUNDRY_PROFILE       forge profile; defaults to default. The contracts are ladder-agnostic,
-#                         so the same build deploys to every target.
+#   FOUNDRY_PROFILE       forge profile; public chains require default so the verifier can
+#                         reproduce the exact deployment build.
 #   DRY_RUN=1             simulate only: no --broadcast, nothing written.
 #   CONFIRM_MAINNET=yes   required to run the mainnet target at all, dry run included.
 set -euo pipefail
@@ -57,12 +57,21 @@ RPC_URL="${RPC_URL:-${RPC_DEFAULT:-}}"
 [ -n "${ADMIN:-}" ] || unset ADMIN
 export SHAPES
 
+if [ "$TARGET" != "anvil" ] && [ "$RPC_URL" != "$RPC_DEFAULT" ]; then
+  echo "refusing: $TARGET requires Tenderly public RPC $RPC_DEFAULT" >&2
+  exit 1
+fi
+
 if [ "$TARGET" = "mainnet" ] && [ "${CONFIRM_MAINNET:-}" != "yes" ]; then
   echo "refusing: mainnet deploys require CONFIRM_MAINNET=yes" >&2
   exit 1
 fi
 
 export FOUNDRY_PROFILE="${FOUNDRY_PROFILE:-default}"
+if [ "$TARGET" != "anvil" ] && [ "$FOUNDRY_PROFILE" != "default" ]; then
+  echo "refusing: $TARGET requires FOUNDRY_PROFILE=default for reproducible verification" >&2
+  exit 1
+fi
 DRY_RUN="${DRY_RUN:-0}"
 
 # The chain the RPC reports must be the chain the env file names.
@@ -91,7 +100,7 @@ else
   exit 1
 fi
 
-# Broadcast and verification.
+# Broadcast only. Verify source separately after receipts and live state are recorded.
 if [ "$DRY_RUN" = "1" ]; then
   echo "DRY_RUN=1: simulating only, nothing is broadcast or written"
 else
@@ -102,10 +111,6 @@ else
     exit 1
   fi
   ARGS+=(--broadcast --slow)
-  if [ "$TARGET" != "anvil" ]; then
-    : "${ETHERSCAN_API_KEY:?ETHERSCAN_API_KEY is required to verify on $TARGET}"
-    ARGS+=(--verify)
-  fi
 fi
 
 # Compile every attempt, including dry runs, from a clean Foundry cache.
@@ -130,6 +135,10 @@ cat "deployments/${CHAIN_ID}.json"
 echo
 
 if [ "$FORGE_STATUS" -ne 0 ]; then
-  echo "both contracts deployed, but Forge exited nonzero; inspect source verification before retrying" >&2
+  echo "both contracts deployed, but Forge exited nonzero; inspect its output before continuing" >&2
   exit "$FORGE_STATUS"
+fi
+
+if [ "$TARGET" != "anvil" ]; then
+  echo "source verification pending: run python3 script/verify_renderer.py $TARGET --submit"
 fi

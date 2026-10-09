@@ -333,49 +333,64 @@ contract MetadataTest is MetadataHelpers {
         assertTrue(contains(svg, '<g transform="translate(842,1775) rotate(-9 375 525)"'), "outer left");
     }
 
-    function test_ThirdTierStepIsFixedAcrossSingleCentreFans() public {
-        uint32[5] memory sizes = [uint32(7), 9, 10, 11, 12];
-        string[5] memory leftThirds = [
+    function test_OddFansKeepThirdTierAndExtendBySharedStep() public {
+        uint32[3] memory sizes = [uint32(7), 9, 11];
+        string[3] memory leftThirds = [
             '<g transform="translate(1083,1809) rotate(-9 291 407)"',
-            '<g transform="translate(1211,1824) rotate(-9 249 349)"',
-            '<g transform="translate(1288,1833) rotate(-9 227 318)"',
-            '<g transform="translate(1288,1833) rotate(-9 227 318)"',
-            '<g transform="translate(1288,1833) rotate(-9 227 318)"'
+            '<g transform="translate(1083,1809) rotate(-9 291 407)"',
+            '<g transform="translate(1083,1809) rotate(-9 291 407)"'
         ];
-        string[5] memory rightThirds = [
+        string[3] memory rightThirds = [
             '<g transform="translate(2175,1809) rotate(7 291 407)"',
-            '<g transform="translate(2131,1824) rotate(7 249 349)"',
-            '<g transform="translate(2098,1833) rotate(7 227 318)"',
-            '<g transform="translate(2098,1833) rotate(7 227 318)"',
-            '<g transform="translate(2098,1833) rotate(7 227 318)"'
+            '<g transform="translate(2175,1809) rotate(7 291 407)"',
+            '<g transform="translate(2175,1809) rotate(7 291 407)"'
+        ];
+        string[3] memory leftOuters = [
+            '<g transform="translate(903,1809) rotate(-7 291 407)"',
+            '<g transform="translate(723,1809) rotate(-5 291 407)"',
+            '<g transform="translate(543,1809) rotate(-3 291 407)"'
+        ];
+        string[3] memory rightOuters = [
+            '<g transform="translate(2355,1809) rotate(5 291 407)"',
+            '<g transform="translate(2535,1809) rotate(3 291 407)"',
+            '<g transform="translate(2715,1809) rotate(1 291 407)"'
         ];
         for (uint256 i = 0; i < sizes.length; ++i) {
             string memory svg = svgOfPack(createFor(alice, noIds(), mintsOf(0, sizes[i])));
             assertTrue(contains(svg, leftThirds[i]) && contains(svg, rightThirds[i]), "tight third tier");
+            assertTrue(contains(svg, leftOuters[i]) && contains(svg, rightOuters[i]), "shared added step");
         }
     }
 
-    function test_EvenPacksThroughEightUseBalancedPairs() public {
-        uint32[3] memory sizes = [uint32(4), 6, 8];
-        string[3] memory leftCentres = [
+    function test_EvenPacksThroughTwelveExtendTheSixCardFan() public {
+        uint32[5] memory sizes = [uint32(4), 6, 8, 10, 12];
+        string[5] memory leftCentres = [
             '<g transform="translate(754,1005) rotate(-5 653 914)"',
             '<g transform="translate(1058,1244) rotate(-5 483 676)"',
-            '<g transform="translate(1261,1403) rotate(-5 369 516)"'
+            '<g transform="translate(1058,1244) rotate(-5 483 676)"',
+            '<g transform="translate(1058,1244) rotate(-5 483 676)"',
+            '<g transform="translate(1058,1244) rotate(-5 483 676)"'
         ];
-        string[3] memory rightCentres = [
+        string[5] memory rightCentres = [
             '<g transform="translate(1780,1005) rotate(5 653 914)"',
             '<g transform="translate(1816,1244) rotate(5 483 676)"',
-            '<g transform="translate(1841,1403) rotate(5 369 516)"'
+            '<g transform="translate(1816,1244) rotate(5 483 676)"',
+            '<g transform="translate(1816,1244) rotate(5 483 676)"',
+            '<g transform="translate(1816,1244) rotate(5 483 676)"'
         ];
-        string[3] memory leftOuters = [
+        string[5] memory leftOuters = [
             '<g transform="translate(378,1462) rotate(-11 490 686)"',
             '<g transform="translate(693,1812) rotate(-9 280 392)"',
-            '<g transform="translate(714,1837) rotate(-7 214 299)"'
+            '<g transform="translate(513,1812) rotate(-7 280 392)"',
+            '<g transform="translate(333,1812) rotate(-5 280 392)"',
+            '<g transform="translate(153,1812) rotate(-3 280 392)"'
         ];
-        string[3] memory rightOuters = [
+        string[5] memory rightOuters = [
             '<g transform="translate(2482,1462) rotate(9 490 686)"',
             '<g transform="translate(2587,1812) rotate(7 280 392)"',
-            '<g transform="translate(2698,1837) rotate(5 214 299)"'
+            '<g transform="translate(2767,1812) rotate(5 280 392)"',
+            '<g transform="translate(2947,1812) rotate(3 280 392)"',
+            '<g transform="translate(3127,1812) rotate(1 280 392)"'
         ];
         for (uint256 i = 0; i < sizes.length; ++i) {
             string memory svg = svgOfPack(createFor(alice, noIds(), mintsOf(0, sizes[i])));
@@ -385,7 +400,7 @@ contract MetadataTest is MetadataHelpers {
             uint256 leftAt = indexOf(svg, leftCentres[i]);
             assertTrue(rightAt != type(uint256).max && leftAt != type(uint256).max, "balanced centre pair");
             assertLt(rightAt, leftAt, "highest-backed centre card drawn last");
-            if (sizes[i] == 6) {
+            if (sizes[i] >= 6) {
                 assertTrue(
                     contains(svg, '<g transform="translate(781,1583) rotate(-11 362 506)"'), "inner left"
                 );
@@ -393,47 +408,41 @@ contract MetadataTest is MetadataHelpers {
                     contains(svg, '<g transform="translate(2335,1583) rotate(9 362 506)"'), "inner right"
                 );
             }
-            if (sizes[i] == 8) {
+            if (sizes[i] >= 8) {
                 assertTrue(
-                    contains(svg, '<g transform="translate(1050,1662) rotate(-11 276 387)"'), "inner left"
+                    contains(svg, '<g transform="translate(693,1812) rotate(-9 280 392)"'), "third tier left"
                 );
                 assertTrue(
-                    contains(svg, '<g transform="translate(2238,1662) rotate(9 276 387)"'), "inner right"
-                );
-                assertTrue(
-                    contains(svg, '<g transform="translate(942,1837) rotate(-9 214 299)"'), "second left"
-                );
-                assertTrue(
-                    contains(svg, '<g transform="translate(2470,1837) rotate(7 214 299)"'), "second right"
+                    contains(svg, '<g transform="translate(2587,1812) rotate(7 280 392)"'), "third tier right"
                 );
             }
         }
     }
 
-    function test_TopCardCapTenShapes() public {
+    function test_TenShapesShowEveryFace() public {
         uint256 packId = createFor(alice, noIds(), mintsOf(0, 10));
         string memory svg = svgOfPack(packId);
         assertEq(_drawnCards(svg), 10, "all ten faces drawn");
         assertEq(countOf(svg, '<clipPath id="c'), 10, "ten clip paths");
         assertEq(countOf(svg, "<svg"), 21, "outer canvas plus ten slots and art");
         assertTrue(
-            contains(svg, '<g transform="translate(1527,1370) rotate(-1 393 550)"'), "single centre at ten"
+            contains(svg, '<g transform="translate(1058,1244) rotate(-5 483 676)"'), "six-sized centre"
         );
     }
 
-    function test_FanShowsAtMostElevenRealFaces() public {
-        uint256[5] memory sizes = [uint256(4), 5, 7, 11, 12];
+    function test_FanShowsAtMostTwelveRealFaces() public {
+        uint256[6] memory sizes = [uint256(4), 5, 7, 11, 12, 13];
         for (uint256 i = 0; i < sizes.length; ++i) {
             uint256 packId = createFor(alice, noIds(), mintsOf(0, uint32(sizes[i])));
             string memory svg = svgOfPack(packId);
-            uint256 shown = sizes[i] > 11 ? 11 : sizes[i];
+            uint256 shown = sizes[i] > 12 ? 12 : sizes[i];
             assertEq(_drawnCards(svg), shown, "actual faces");
             assertEq(countOf(svg, "<svg"), 1 + 2 * shown, "slot and Shape SVG per face");
         }
     }
 
     function test_TokenUriGasGrowthFor200ShapesIsUnderThreeMillion() public {
-        uint256 small = createFor(alice, noIds(), mintsOf(0, 11));
+        uint256 small = createFor(alice, noIds(), mintsOf(0, 12));
         uint256 large = createFor(alice, noIds(), mintsOf(0, 200));
         uint256 g0 = gasleft();
         packs.tokenURI(small);
@@ -441,10 +450,10 @@ contract MetadataTest is MetadataHelpers {
         g0 = gasleft();
         packs.tokenURI(large);
         uint256 largeGas = g0 - gasleft();
-        // Both draw eleven faces; the large pack scans more ids for its makeup and ranking.
+        // Both draw twelve faces; the large pack scans more ids for its makeup and ranking.
         assertLt(largeGas, smallGas + 3_000_000, "tokenURI of a 200-Shape pack stays bounded");
         assertLt(largeGas, 25_000_000, "large tokenURI remains below a 30m eth_call budget");
-        assertEq(_drawnCards(svgOfPack(large)), 11);
+        assertEq(_drawnCards(svgOfPack(large)), 12);
     }
 
     function test_HighestBackingIsFrontAndTiesUseTokenId() public {
@@ -472,19 +481,19 @@ contract MetadataTest is MetadataHelpers {
         assertTrue(highAt > middleAt && middleAt > low0At && low0At > low1At, "high first, id tie break");
     }
 
-    function test_FanSelectsHighestElevenFromLargerPack() public {
-        uint256[] memory lows = mintShapes(alice, 0, 11);
+    function test_FanSelectsHighestTwelveFromLargerPack() public {
+        uint256[] memory lows = mintShapes(alice, 0, 12);
         uint256 high = mintShape(alice, 2);
-        uint256[] memory pulled = new uint256[](12);
-        for (uint256 i = 0; i < 11; ++i) {
+        uint256[] memory pulled = new uint256[](13);
+        for (uint256 i = 0; i < 12; ++i) {
             pulled[i] = lows[i];
         }
-        pulled[11] = high;
+        pulled[12] = high;
         approveAll(alice);
         string memory svg = svgOfPack(createFor(alice, pulled, noMints()));
         ShapeRenderer r = ShapeRenderer(shapes.renderer());
         ShapeState memory h = shapes.shapeState(high);
-        ShapeState memory excluded = shapes.shapeState(lows[10]);
+        ShapeState memory excluded = shapes.shapeState(lows[11]);
         assertTrue(
             contains(svg, r.renderSVG(h.seed, h.faceValueWei, h.isBlack, h.inkGene)), "late high card shown"
         );

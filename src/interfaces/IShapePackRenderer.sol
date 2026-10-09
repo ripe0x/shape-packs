@@ -14,7 +14,7 @@ struct PackRenderInput {
     uint256[] denominations; // wei per ladder index, same length
     uint256 mintedCount; // Shapes the pack minted itself; shapeCount - mintedCount were pulled
     address creator;
-    ShapeState[] topCards; // up to eleven Shapes, highest redeemable backing first
+    ShapeState[] topCards; // up to twelve Shapes, highest redeemable backing first
     string tokenNamePrefix;
     string description;
 }

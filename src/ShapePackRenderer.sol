@@ -22,8 +22,11 @@ import {IShapePackRenderer, PackRenderInput} from "./interfaces/IShapePackRender
 contract ShapePackRenderer is IShapePackRenderer, IERC165 {
     uint256 private constant CANVAS = 3840;
     uint256 private constant CENTER = CANVAS / 2;
-    uint256 private constant MAX_CARDS = 11;
+    uint256 private constant MAX_CARDS = 12;
     uint256 private constant THIRD_TIER_STEP = 170;
+    uint256 private constant SIX_PACK_FRONT_WIDTH = 966;
+    uint256 private constant SEVEN_PACK_FRONT_WIDTH = 1005;
+    uint256 private constant ADDED_OUTER_STEP = 180;
 
     struct CardSlot {
         uint256 x;
@@ -172,7 +175,7 @@ contract ShapePackRenderer is IShapePackRenderer, IERC165 {
 
     /* -------------------------------- images -------------------------------- */
 
-    /// @dev Rank zero is centred except in balanced even fans of up to eight cards.
+    /// @dev Rank zero is centred except in balanced even fans of up to twelve cards.
     function _image(PackRenderInput calldata input) private view returns (string memory) {
         IShapeRenderer renderer = IShapeRenderer(IShapes(shapes).renderer());
         uint256 n = input.topCards.length;
@@ -225,15 +228,17 @@ contract ShapePackRenderer is IShapePackRenderer, IERC165 {
     }
 
     /// @dev The Draw index hero uses 75% inner faces, 58% outer faces and tilts that
-    ///      ease by two degrees per pair. Even fans through eight use a scaled two-card
-    ///      centre; other fans keep a single front card and their first side step.
+    ///      ease by two degrees per pair. Even fans use a balanced two-card centre;
+    ///      odd fans keep a single front card. Beyond seven, face widths stop
+    ///      shrinking and match the six- or seven-card fan according to parity.
     function _slot(uint256 rank, uint256 n) private pure returns (CardSlot memory slot) {
-        if (n <= 8 && n % 2 == 0) return _evenSlot(rank, n);
+        if (n % 2 == 0) return _evenSlot(rank, n);
 
         uint256 pairs = n / 2;
-        uint256 stepPercent = 65 - pairs * 5;
+        uint256 stepPercent = n > 7 ? 50 : 65 - pairs * 5;
         uint256 frontWidth = pairs == 0 ? 1600 : (CANVAS - 240) * 100 / (pairs * stepPercent * 2 + 58);
         if (frontWidth > 1600) frontWidth = 1600;
+        if (n > 7) frontWidth = SEVEN_PACK_FRONT_WIDTH;
         uint256 frontHeight = frontWidth * 7 / 5;
         uint256 baseline = (CANVAS + frontHeight) / 2;
         if (rank == 0) {
@@ -250,20 +255,20 @@ contract ShapePackRenderer is IShapePackRenderer, IERC165 {
         uint256 firstStep = frontWidth * stepPercent * (pairs == 1 ? 4 : 3) / 400;
         uint256 offset = firstStep;
         if (pair > 1) offset += THIRD_TIER_STEP;
-        if (pair > 2) offset += (pair - 2) * firstStep;
+        if (pair > 2) offset += (pair - 2) * ADDED_OUTER_STEP;
         bool right = rank % 2 == 1;
         slot.x = right ? CENTER + offset - slot.width / 2 : CENTER - offset - slot.width / 2;
         slot.y = baseline - slot.height;
         slot.angle = right ? FixedPoint.toString(11 - pair * 2) : _neg(13 - pair * 2);
     }
 
-    /// @dev Keep the two-card pair's width-to-spacing ratio at every even size. The
-    ///      first outer pair stays put; the gap into tier three is fixed across
-    ///      pack sizes, then later gaps retain their previous spacing.
+    /// @dev Keep the six-card face sizes beyond six. Each new outer pair adds a
+    ///      180-unit step so twelve cards and their shadows fit the square canvas.
     function _evenSlot(uint256 rank, uint256 n) private pure returns (CardSlot memory slot) {
         uint256 pairs = n / 2;
         uint256 frontWidth =
             n == 2 ? 1450 : (CANVAS - 400) * 100 / (2 * (39 + (pairs - 1) * 55) + (pairs == 2 ? 75 : 58));
+        if (n > 6) frontWidth = SIX_PACK_FRONT_WIDTH;
         uint256 pair = rank / 2;
         bool right = rank % 2 == 1;
         if (pair == 0) slot.width = frontWidth;
@@ -275,7 +280,7 @@ contract ShapePackRenderer is IShapePackRenderer, IERC165 {
         if (pair != 0) {
             offset += outerStep;
             if (pair > 1) offset += THIRD_TIER_STEP;
-            if (pair > 2) offset += (pair - 2) * (outerStep * 3 / 4);
+            if (pair > 2) offset += (pair - 2) * ADDED_OUTER_STEP;
         }
         slot.x = right ? CENTER + offset - slot.width / 2 : CENTER - offset - slot.width / 2;
         slot.y = (CANVAS + frontWidth * 7 / 5) / 2 - slot.height;

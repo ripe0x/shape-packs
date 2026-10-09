@@ -6,15 +6,13 @@ Code candidate: local implementation commit under visual review (current HEAD)
 Product rules: [DESIGN.md](../DESIGN.md) and [SECURITY.md](../SECURITY.md)
 Launch status: Existing Sepolia contracts remain live; replacement contracts are not deployed
 
-The redesign draws up to eleven actual Shape faces on a transparent canvas, ordered by redeemable
-backing with token-id ties. Packs with 2, 4, 6 or 8 Shapes use a scaled two-card centre with smaller
-faces distributed in matched left and right pairs. Odd counts and counts of ten or more retain
-a single highest-value
-face centred in front, using the Draw Shapes hero's size and tilt steps. Three Shapes retain the
-hero spacing. In every fan, the primary tier and first smaller tier stay in place; the gap to
-the third tier is a fixed 170 canvas units beyond the first smaller tier at every count.
-Farther tiers shift with it while retaining their previous gaps. This applies to every count
-that has a third tier.
+The redesign draws up to twelve actual Shape faces on a transparent canvas, ordered by redeemable
+backing with token-id ties. Even packs through twelve use a balanced two-card centre with smaller
+faces distributed in matched left and right pairs. Odd packs retain a single highest-value face
+centred in front. Three Shapes retain the Draw Shapes hero spacing. Beyond seven, even packs keep
+the six-Shape face sizes and odd packs keep the seven-Shape face sizes. Every step beyond the
+third tier is 180 canvas units in both layouts. The gap into the third tier
+stays fixed at 170 canvas units. Packs over twelve show their top twelve cards.
 The contractURI uses the same layout with three illustrative faces. Rendered
 1- through 12-Shape examples are in `preview/fan-contact-sheet.png` (ignored, local review
 artifact). The user requested visual confirmation before the layout is final. Default and testnet

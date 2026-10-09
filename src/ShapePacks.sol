@@ -44,7 +44,7 @@ contract ShapePacks is ERC721, IShapePacks, IERC2981, IERC721Receiver, Reentranc
 
     uint256 private constant MAX_NAME_BYTES = 64;
     uint256 private constant MAX_DESCRIPTION_BYTES = 2048;
-    uint256 private constant TOP_CARDS = 11;
+    uint256 private constant TOP_CARDS = 12;
 
     /// @inheritdoc IShapePacks
     // forge-lint: disable-next-line(screaming-snake-case-immutable)
@@ -403,7 +403,7 @@ contract ShapePacks is ERC721, IShapePacks, IERC2981, IERC721Receiver, Reentranc
     /* ------------------------------ metadata ------------------------------ */
 
     /// @notice Fully onchain metadata for a live pack, built by the renderer from one struct.
-    /// @dev Reverts for a pack that is not live. Up to eleven Shapes, ranked by backing and then
+    /// @dev Reverts for a pack that is not live. Up to twelve Shapes, ranked by backing and then
     ///      token id, are passed as cards. Contents order is unaffected.
     function tokenURI(uint256 packId) public view override returns (string memory) {
         _requireOwned(packId);
@@ -514,7 +514,7 @@ contract ShapePacks is ERC721, IShapePacks, IERC2981, IERC721Receiver, Reentranc
 
     /// @dev Build the full makeup and keep only the highest-backed ids for the image. Packed
     ///      Shapes cannot be Black, so their denomination is their redeemable backing. An
-    ///      insertion into an eleven-element window avoids sorting a potentially unbounded pack.
+    ///      insertion into a twelve-element window avoids sorting a potentially unbounded pack.
     function _previewOrder(IShapes s, uint256[] memory ids, uint256[] memory denominations)
         internal
         view

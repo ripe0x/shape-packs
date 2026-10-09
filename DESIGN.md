@@ -11,7 +11,7 @@ how it is created, extended and exited, what the contract may never do, how it r
 repository is laid out, and the decisions that were taken.
 
 Revision 3. The collection and token images use a centred fan; token faces are ranked by backing
-and token id, up to eleven. Revision 2 made packs extendable by their holder; there is no cap on
+and token id, up to twelve. Revision 2 made packs extendable by their holder; there is no cap on
 pack size, so exit is chunkable; the pack's value is cached; the creator is recorded; the
 `Sealed` trait, `createdAt` and the `IShapePositionResolver` claim are gone; rule order and the
 approval wording are fixed.
@@ -365,29 +365,33 @@ struct PackRenderInput {
     uint256[] denominations;  // wei per ladder index
     uint256 mintedCount;
     address creator;
-    ShapeState[] topCards;    // up to eleven Shapes, highest redeemable backing first
+    ShapeState[] topCards;    // up to twelve Shapes, highest redeemable backing first
     string tokenNamePrefix;
     string description;
 }
 ```
 
 **Image.** A fan on a transparent square canvas, following the Draw Shapes index hero carousel's
-size steps and easing tilt. Packs with 2, 4, 6 or 8 Shapes use a balanced centre pair: the two
+size steps and easing tilt. Even packs through twelve Shapes use a balanced centre pair: the two
 highest-backed faces have the same size and overlap like the two-Shape pack, while lower-backed
-faces fill matched left and right outer positions. The pair and its spacing scale together as
-more faces are added. The first smaller pair sits 41.25% of the front-card width beyond the
-centre pair. Three Shapes keep the hero spacing. Odd counts from five onward and counts of ten
-or more use 75% of the initial preview's first centre step, with the highest-backed Shape
-centred in front and the rest alternating right and left. In every fan, the centre-to-centre step
-from the first smaller pair to the third tier is 170 canvas units, regardless of card count.
-Farther tiers shift with it while retaining their spacing from each other. The highest-backed
-face is always drawn on top. Equal backing is ordered by ascending token id. Up to eleven real
-Shape faces are drawn. For larger packs, these are the eleven highest-backed Shapes; the full
-count and makeup remain in metadata. This display sort never changes custody or contents order. The renderer
-uses Shapes' live `renderer()`, calling
+faces fill matched left and right outer positions. The pair and its spacing scale together through
+six Shapes; eight, ten and twelve keep the six-Shape face sizes and add outer pairs. The first
+smaller pair sits 41.25% of the front-card width beyond the centre pair. Three Shapes keep the
+hero spacing. Odd counts from five onward use 75% of the
+initial preview's first centre step, with the highest-backed Shape centred in front and the rest
+alternating right and left. Beyond seven Shapes, even pack faces use the six-Shape sizes
+(966-unit front face), and odd pack faces use the seven-Shape sizes (1005-unit front face).
+Outer pairs extend both fans without shrinking their cards. Beyond the third tier, both
+fans use the same 180-unit step for each outer pair so twelve faces fit within
+the canvas. In every fan, the centre-to-centre step from the first smaller pair to the third tier
+is 170 canvas units, regardless of card count. The highest-backed
+face is always drawn on top. Equal backing is ordered by ascending token id. Up to twelve real
+Shape faces are drawn. For larger packs, these are the twelve highest-backed Shapes; the full
+count and makeup remain in metadata. This display sort never changes custody or contents order.
+The renderer uses Shapes' live `renderer()`, calling
 `renderSVG` for seed-derived cards and `renderSVGSampled` when `modules` is nonempty. Each face
 keeps its 5:7 aspect ratio and its art is clipped only to its own rounded card. There are no
-plain black backs. The fixed eleven-face ceiling bounds artwork rendering; `tokenURI` still
+plain black backs. The fixed twelve-face ceiling bounds artwork rendering; `tokenURI` still
 copies and scans the full contents list, so its cost grows with pack size.
 
 **Name and description.** `Shape Pack 12`. Description: the shared editable copy, then the makeup

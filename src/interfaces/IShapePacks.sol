@@ -23,8 +23,9 @@ struct PackState {
 /// @dev Custody rules follow `ShapeCardEscrow`: Shapes are pulled with `transferFrom` from the
 ///      caller only, minted into the contract through a receiver window that admits nothing else,
 ///      and pushed out with `transferFrom`. The contract never calls a Shapes mutator other than
-///      `mintBatchTo` and `redeemBatchTo`, never approves anyone, never holds ETH, and has no
-///      admin path into custody. The admin role reaches presentation only.
+///      `mintBatchTo` and `redeemBatchTo`, never approves anyone, and has no admin path into
+///      custody. It does not retain ETH from normal calls; forced ETH can be stranded. The admin
+///      role reaches presentation only.
 ///
 ///      Every pull is `transferFrom(msg.sender, this, id)`, so an approval granted to this
 ///      contract can only be exercised by the approver's own call.
@@ -94,7 +95,8 @@ interface IShapePacks is IERC721, IERC721Value {
     error NothingToClaim(uint256 packId);
     error ZeroQuantity();
     error InvalidRecipient(address recipient);
-    /// @notice A Shape arrived through `safeTransferFrom` outside the mint window.
+    /// @notice A safe Shape transfer was refused; only Shapes mints in the receiver window are
+    ///         accepted.
     error UnsolicitedToken(address from);
     error DirectDepositRejected();
     /// @notice `defaultMakeup` was asked for an amount that is not a whole number of units.

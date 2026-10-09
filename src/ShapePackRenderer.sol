@@ -17,8 +17,8 @@ import {IShapePackRenderer, PackRenderInput} from "./interfaces/IShapePackRender
 /// @notice Draws a pack as a stack of Shapes cards and describes it as JSON. The first few Shapes
 ///         in a pack show as fanned cards, drawn by whatever renderer Shapes presents; the rest
 ///         are plain black card backs behind them. Black and white, no fonts, as a Shape.
-/// @dev Pure view logic. The only storage is the immutable Shapes address; the renderer is read
-///      from Shapes on every call, so pack art follows Shapes' art. Layout is the
+/// @dev View-only logic. Its only immutable configuration is the Shapes address; the renderer is
+///      read from Shapes on every call, so pack art follows Shapes' art. Layout is the
 ///      `ShapeCollection.imageFor` card, 2000x2800 at (920,520) on a 3840 canvas, with the same
 ///      rounded corners and drop shadow. Card artwork is the renderer's nested 2000x2800 `<svg>`,
 ///      placed by translating to the card origin and clipped to the rounded rect. Callers supply

@@ -28,11 +28,12 @@ right to exit.
 - Call `compose`, `decompose`, `split`, `burnBacking`, `approve` or `setApprovalForAll` on Shapes.
   The only Shapes mutators it calls are `mintBatchTo` and `redeemBatchTo`. Nothing in the contract
   can change what a packed Shape is or who may move it.
-- Hold ETH. Creation and additions forward `msg.value` exactly into Shapes mints; redemption pays
-  the recipient directly from Shapes. `receive` and `fallback` revert `DirectDepositRejected`.
-- Accept an unsolicited Shape. `onERC721Received` returns the selector only when `msg.sender ==
-  shapes`, `_minting` is set, and `from == address(0)`. A `safeTransferFrom` into the contract
-  reverts `UnsolicitedToken`.
+- Retain ETH from normal calls. Creation and additions forward `msg.value` exactly into Shapes mints;
+  redemption pays the recipient directly from Shapes. `receive` and `fallback` revert
+  `DirectDepositRejected`, though forced ETH can be stranded.
+- Accept an unsolicited safe Shape transfer. `onERC721Received` returns the selector only when
+  `msg.sender == shapes`, `_minting` is set, and `from == address(0)`. A `safeTransferFrom` into the
+  contract reverts `UnsolicitedToken`.
 - Expose an administrative path into custody. There is no pause, no recovery, no upgrade, no
   allowlist.
 
@@ -154,9 +155,9 @@ answers ERC-165 for `IShapePackRenderer` but does not smoke-call it, so a broken
 
 Copy is bounded (64 and 2048 bytes) and checked JSON-safe (printable ASCII, no `"` or `\`), so it
 cannot break or restructure the JSON. It is not HTML-escaped, so a marketplace that renders
-`description` as HTML would display admin-supplied markup. Each of `setRenderer`, `setMetadataCopy`
-and `lockPresentation` emits ERC-4906 `BatchMetadataUpdate(1, totalMinted)` and ERC-7572
-`ContractURIUpdated()`. `lockPresentation` freezes both permanently, and renouncing admin freezes
+`description` as HTML would display admin-supplied markup. `setRenderer` and `setMetadataCopy`
+emit ERC-4906 `BatchMetadataUpdate(1, totalMinted)` and ERC-7572 `ContractURIUpdated()`.
+`lockPresentation` emits `PresentationLocked` and freezes both permanently; renouncing admin freezes
 them at their last values. Until then hold the admin in a multisig. The deployed art is also drawn
 through Shapes' own live `renderer()`, so a pack's cards track whatever Shapes presents.
 

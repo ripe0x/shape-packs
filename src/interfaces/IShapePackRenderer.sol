@@ -4,7 +4,7 @@ pragma solidity 0.8.28;
 import {ShapeState} from "shapes/ShapeTypes.sol";
 
 /// @notice Everything the renderer needs to draw and describe one pack. Assembled by
-///         `ShapePacks` from its own storage and from Shapes; the renderer reads no token state.
+///         `ShapePacks` from its own storage and from Shapes; the renderer does not query pack state.
 struct PackRenderInput {
     uint256 packId;
     uint256 shapeCount;

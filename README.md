@@ -185,10 +185,11 @@ is in [SECURITY.md](SECURITY.md); in short, the contract never:
 
 - calls `compose`, `decompose`, `split`, `burnBacking`, `approve` or `setApprovalForAll` on Shapes.
   The only Shapes mutators it calls are `mintBatchTo` and `redeemBatchTo`;
-- holds ETH. Creation and additions forward `msg.value` exactly into Shapes mints; redemption is
-  paid by Shapes straight to the recipient. `receive` and `fallback` revert;
-- accepts an unsolicited Shape. `onERC721Received` admits only a Shapes mint the contract itself is
-  performing; a `safeTransferFrom` into the contract reverts `UnsolicitedToken`;
+- retains ETH from normal calls. Creation and additions forward `msg.value` exactly into Shapes
+  mints; redemption is paid by Shapes straight to the recipient. `receive` and `fallback` revert;
+  forced ETH can still be stranded;
+- accepts an unsolicited safe Shape transfer. `onERC721Received` admits only a Shapes mint the
+  contract itself is performing; a `safeTransferFrom` into it reverts `UnsolicitedToken`;
 - exposes any administrative path into custody. There is no pause, recovery, upgrade or allowlist.
 
 An `admin()` exists, and reaches presentation only: it can replace the renderer, edit the name prefix

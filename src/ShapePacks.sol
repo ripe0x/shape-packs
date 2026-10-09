@@ -19,16 +19,17 @@ import {IShapePackRenderer, PackRenderInput} from "./interfaces/IShapePackRender
 
 /// @title ShapePacks
 /// @notice Bundles of Shapes as one ERC-721. See `IShapePacks` for the surface and
-///         SHAPE_PACKS_DESIGN.md for the specification.
+///         DESIGN.md for the specification.
 ///
 /// @dev Custody rules, which follow `ShapeCardEscrow`:
-///      - Shapes enter in two ways only. They are pulled with `transferFrom(msg.sender, this, id)`,
-///        so an approval granted to this contract can only be exercised by the approver's own
-///        call; or they are minted into this contract by `Shapes.mintBatchTo`, through the
-///        `_minting` receiver window, which `onERC721Received` opens for a mint and nothing else.
+///      - Shapes enter a pack in two ways only. They are pulled with
+///        `transferFrom(msg.sender, this, id)`, so an approval granted to this contract can only be
+///        exercised by the approver's own call; or they are minted here by `Shapes.mintBatchTo`,
+///        through the `_minting` receiver window, which admits a mint and nothing else.
 ///      - Shapes leave in two ways only, both owner-directed: a plain `transferFrom` out, or one
-///        `redeemBatchTo` that makes Shapes pay the ETH directly. This contract never holds ETH
-///        and never calls any other Shapes mutator, never approves anyone.
+///        `redeemBatchTo` that makes Shapes pay the ETH directly. It does not retain ETH from normal
+///        calls, though forced ETH can be stranded. It never calls another Shapes mutator or
+///        approves anyone.
 ///      - A live pack's contents only grow. Only the owner (not an approved operator) may add,
 ///        open, redeem or unseal. Exit burns the pack token first, then drains `_contents`
 ///        from the end, and clears `_packOf` and the claimant entry as it goes. All state is
@@ -295,8 +296,8 @@ contract ShapePacks is ERC721, IShapePacks, IERC2981, IERC721Receiver, Reentranc
     /// @inheritdoc IERC721Receiver
     /// @dev Accepts a Shape only when it is minted here (`from == address(0)`) by Shapes while a
     ///      creation or addition is minting. A `safeTransferFrom` into this contract carries a
-    ///      nonzero `from` and is refused, even inside the window, so a Shape cannot be stranded
-    ///      here with no pack naming it.
+    ///      nonzero `from` and is refused, even inside the window. A plain `transferFrom` bypasses
+    ///      this hook and can strand an untracked Shape.
     function onERC721Received(address, address from, uint256, bytes calldata) external view returns (bytes4) {
         if (msg.sender != shapes || !_minting || from != address(0)) revert UnsolicitedToken(from);
         return IERC721Receiver.onERC721Received.selector;
@@ -366,8 +367,9 @@ contract ShapePacks is ERC721, IShapePacks, IERC2981, IERC721Receiver, Reentranc
     }
 
     /// @inheritdoc IShapePacks
-    /// @dev The new renderer must have code and answer ERC-165 for `IShapePackRenderer`, so a
-    ///      mistyped address cannot brick `tokenURI`. Signals marketplaces to re-read.
+    /// @dev The new renderer must have code and answer ERC-165 for `IShapePackRenderer`. This
+    ///      rejects an EOA or wrong interface, but a renderer that passes can still revert.
+    ///      Signals marketplaces to re-read.
     function setRenderer(address newRenderer) external onlyAdmin whenUnlocked {
         _requireRenderer(newRenderer);
         _renderer = newRenderer;
@@ -402,7 +404,7 @@ contract ShapePacks is ERC721, IShapePacks, IERC2981, IERC721Receiver, Reentranc
 
     /// @notice Fully onchain metadata for a live pack, built by the renderer from one struct.
     /// @dev Reverts for a pack that is not live. Only the first three Shapes in contents order
-    ///      are passed as cards, so the cost does not grow with the pack.
+    ///      are passed as cards; copying contents and computing makeup still scale with pack size.
     function tokenURI(uint256 packId) public view override returns (string memory) {
         _requireOwned(packId);
         IShapes s = IShapes(shapes);

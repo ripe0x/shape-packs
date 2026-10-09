@@ -346,9 +346,9 @@ presentation admin, with no authority over custody.
   (64 and 2048 bytes) and checked JSON-safe (printable ASCII, no `"` or `\`), so it cannot break
   the JSON. Shapes' `CopyValidation` is a linked library; the pack uses an internal check with
   the same bounds to avoid a second linked deploy.
-- `lockPresentation()` freezes renderer and copy permanently. Each of the three setters emits
-  ERC-4906 `BatchMetadataUpdate(1, totalMinted)` and ERC-7572 `ContractURIUpdated()` so
-  marketplaces re-read.
+- `lockPresentation()` freezes renderer and copy permanently and emits `PresentationLocked`.
+  `setRenderer` and `setMetadataCopy` emit ERC-4906 `BatchMetadataUpdate(1, totalMinted)` and
+  ERC-7572 `ContractURIUpdated()` so marketplaces re-read changed metadata.
 
 `tokenURI(packId)` is a base64 `data:application/json` URI, image a base64 `data:image/svg+xml`,
 fully onchain, no fonts, black and white, same as a Shape. `ShapePacks` gathers everything the
@@ -376,7 +376,8 @@ seed-derived card and `renderSVGSampled` when `modules` is nonempty, fanned with
 and the remaining cards as plain black rounded card backs behind them, up to a few so the stack
 reads as deep without drawing a thousand rectangles. The canvas is square with the stack inset,
 rounded and shadowed, matching `ShapeCollection.imageFor`. Drawing every card is not attempted;
-the three-card cap keeps `tokenURI` cheap for marketplaces and the indexer whatever the pack size.
+the three-card cap bounds artwork rendering. `tokenURI` still copies the full contents list and
+scans it to compute the makeup, so its cost grows with pack size.
 
 **Name and description.** `Shape Pack 12`. Description: the shared editable copy, then the makeup
 in words: `3 x 0.01 ETH, 1 x 0.05 ETH. 0.08 ETH total.`, with an ASCII `x` so the JSON stays

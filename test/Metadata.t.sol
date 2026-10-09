@@ -343,7 +343,7 @@ contract MetadataTest is MetadataHelpers {
         }
     }
 
-    function test_TokenUriCostDoesNotGrowWithPackSize() public {
+    function test_TokenUriGasGrowthFor200ShapesIsUnderThreeMillion() public {
         uint256 small = createFor(alice, noIds(), mintsOf(0, 3));
         uint256 large = createFor(alice, noIds(), mintsOf(0, 200));
         uint256 g0 = gasleft();

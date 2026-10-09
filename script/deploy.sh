@@ -76,15 +76,15 @@ if [ "$TARGET" != "anvil" ] && [ "$FOUNDRY_PROFILE" != "default" ]; then
 fi
 DRY_RUN="${DRY_RUN:-0}"
 DEPLOYMENT_LABEL="${DEPLOYMENT_LABEL:-}"
-if [ -n "$DEPLOYMENT_LABEL" ] && [[ ! "$DEPLOYMENT_LABEL" =~ ^[a-zA-Z0-9][a-zA-Z0-9_-]*$ ]]; then
-  echo "refusing: DEPLOYMENT_LABEL must contain only letters, digits, _ or -" >&2
+if [ -n "$DEPLOYMENT_LABEL" ] && { [[ ! "$DEPLOYMENT_LABEL" =~ ^[a-zA-Z0-9][a-zA-Z0-9_-]*$ ]] || [ "$DEPLOYMENT_LABEL" = latest ]; }; then
+  echo "refusing: DEPLOYMENT_LABEL must contain only letters, digits, _ or -, and cannot be latest" >&2
   exit 1
 fi
 SUFFIX="${DEPLOYMENT_LABEL:+-$DEPLOYMENT_LABEL}"
 MANIFEST="deployments/${CHAIN_ID}${SUFFIX}.json"
 BROADCAST="broadcast/Deploy.s.sol/${CHAIN_ID}/run-latest.json"
 ARCHIVE="broadcast/Deploy.s.sol/${CHAIN_ID}/run-before-${DEPLOYMENT_LABEL}.json"
-SNAPSHOT="broadcast/Deploy.s.sol/${CHAIN_ID}/run-${DEPLOYMENT_LABEL}.json"
+SNAPSHOT="broadcast/Deploy.s.sol/${CHAIN_ID}/snapshot-${DEPLOYMENT_LABEL}.json"
 
 # The chain the RPC reports must be the chain the env file names.
 ACTUAL_CHAIN="$(cast chain-id --rpc-url "$RPC_URL")"

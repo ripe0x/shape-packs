@@ -20,14 +20,14 @@ def address(value):
 
 
 def deployment_path(chain_id, label=""):
-    if label and not re.fullmatch(r"[a-zA-Z0-9][a-zA-Z0-9_-]*", label):
+    if label == "latest" or (label and not re.fullmatch(r"[a-zA-Z0-9][a-zA-Z0-9_-]*", label)):
         raise ValueError("invalid deployment label")
     return pathlib.Path(f"deployments/{chain_id}{'-' + label if label else ''}.json")
 
 
 def broadcast_path(chain_id, label=""):
     deployment_path(chain_id, label)  # Apply the same path-safety check.
-    name = f"run-{label}.json" if label else "run-latest.json"
+    name = f"snapshot-{label}.json" if label else "run-latest.json"
     return pathlib.Path(f"broadcast/Deploy.s.sol/{chain_id}/{name}")
 
 

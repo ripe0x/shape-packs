@@ -1,12 +1,12 @@
 # Project state
 
-Phase: Sepolia release gate; awaiting rollout choice and user-operated broadcast
+Phase: Sepolia v2 deployed; source verification and legacy renderer update pending
 Branch: primary main for all deployment and verification commands
 Code candidate: 6275bf4 (renderer accepted October 9, 2026); release tools e9ebd1e
 Product rules: [DESIGN.md](../DESIGN.md) and [SECURITY.md](../SECURITY.md)
-Launch status: Existing Sepolia contracts remain live; replacement contracts are not deployed
-Blocker: the live ShapePacks producer caps the preview at eleven faces, so a renderer-only
-upgrade cannot meet the accepted twelve-face rule. Three packs remain live in that collection.
+Launch status: New Sepolia collection deployed; explorer verification and legacy update pending
+Blocker: the original ShapePacks producer caps previews at eleven faces. Its three live packs
+remain in that collection; the new twelve-face collection starts empty.
 
 The redesign draws up to twelve actual Shape faces on a transparent canvas, ordered by redeemable
 backing with token-id ties. Even packs through twelve use a balanced two-card centre with smaller
@@ -21,8 +21,19 @@ artifact). The user accepted the layout for release. Default and testnet Foundry
 223 tests each. The release tool passed ten focused tests and independent review. From clean
 primary main, `DRY_RUN=1 DEPLOYMENT_LABEL=v2 script/deploy.sh sepolia` passed against Tenderly's
 public RPC with `forge clean` and constructor readback; no transactions were sent. The existing
-manifest and broadcast remain unchanged. A v2 broadcast must be followed by receipt/readback
-inspection and exact-input source verification before further Solidity changes.
+manifest and broadcast remained unchanged during rehearsal. The user then deployed v2 from
+primary main. Both receipts succeeded and readbacks match. The exact-input source preflight
+passed for both new creations; Etherscan submission remains with the user. Keep deployment
+source unchanged until that submission succeeds.
+
+V2 `ShapePackRenderer` is at `0x199f7d71d8d56cb721c2a71c68cc34b8f925af9c` (transaction
+`0x8412c3dde9d249ccbd40777ce7d8ab424267d6eed17a277c8b64fcba01c318b5`). V2
+`ShapePacks` is at `0x4974f26d743b7d39761198209776d7d3f50ba94d` (transaction
+`0xdb00d33997c575c2f6a662d22db2d653b83b274c6cad02c9ad10407d72e4991b`).
+The checked manifest is `deployments/11155111-v2.json`; its block is 11880142. Live reads
+confirm the Shapes link, renderer link, deployer/admin and unlocked presentation. Total supply
+is zero. The original collection remains unlocked with admin `0xcb43078c32423f5348cab5885911c3b5fae217f9`;
+a simulated `setRenderer` to the v2 renderer succeeded.
 
 On October 9, 2026, both creation receipts succeeded. `ShapePackRenderer` is at
 `0xd9ff1d1b7dd7b26a7b52c5f7f8abad7d216ceeb4` (transaction
@@ -44,6 +55,6 @@ The release workflow now separates broadcasting from source verification. The ve
 both live creation transactions against one full deployment build and submits only Standard JSON
 fields, so neither of the two failed retry paths is used for a future mainnet deployment.
 
-Next: resolve whether Sepolia gets a new collection, an update to the old collection, or both;
-then give the user the signer-owned deployment and metadata-update commands. A new collection
-is required for twelve faces; the old collection can render at most eleven.
+Next: user submits v2 source verification, then signs the original collection's `setRenderer`
+transaction with `ripe0x`. Confirm its receipt and renderer readback. The old collection will
+gain the new layout but will still render at most eleven faces.

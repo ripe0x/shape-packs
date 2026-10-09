@@ -1,0 +1,10 @@
+{
+  "chainId": 11155111,
+  "shapes": "0x6c2f9c00f44fbbf141dd166979903004b80d5f99",
+  "shapePacks": "0x4974f26d743b7d39761198209776d7d3f50ba94d",
+  "shapePackRenderer": "0x199f7d71d8d56cb721c2a71c68cc34b8f925af9c",
+  "admin": "0xcb43078c32423f5348cab5885911c3b5fae217f9",
+  "minPackValueWei": "300000000000000",
+  "deployer": "0xcb43078c32423f5348cab5885911c3b5fae217f9",
+  "blockNumber": 11880142
+}

@@ -4,6 +4,7 @@
 import json
 import os
 import pathlib
+import re
 import sys
 import tempfile
 import time
@@ -16,6 +17,30 @@ def address(value):
     if number == 0 or number >= 2**160:
         raise ValueError(f"invalid address: {value}")
     return f"0x{number:040x}"
+
+
+def deployment_path(chain_id, label=""):
+    if label == "latest" or (label and not re.fullmatch(r"[a-zA-Z0-9][a-zA-Z0-9_-]*", label)):
+        raise ValueError("invalid deployment label")
+    return pathlib.Path(f"deployments/{chain_id}{'-' + label if label else ''}.json")
+
+
+def broadcast_path(chain_id, label=""):
+    deployment_path(chain_id, label)  # Apply the same path-safety check.
+    name = f"snapshot-{label}.json" if label else "run-latest.json"
+    return pathlib.Path(f"broadcast/Deploy.s.sol/{chain_id}/{name}")
+
+
+def save_new_file(path, content):
+    temporary = None
+    try:
+        with tempfile.NamedTemporaryFile("wb", dir=path.parent, prefix=".deployment-", delete=False) as out:
+            temporary = out.name
+            out.write(content)
+        os.link(temporary, path)  # Never replace an existing record or broadcast snapshot.
+    finally:
+        if temporary:
+            os.unlink(temporary)
 
 
 def rpc(url, method, params):
@@ -49,12 +74,14 @@ def call_address(url, target, selector):
     return address(hex(call_uint(url, target, selector)))
 
 
-def record(chain_id, url, shapes_input, admin_input):
+def record(chain_id, url, shapes_input, admin_input, label=""):
+    path = deployment_path(chain_id, label)
     if int(rpc(url, "eth_chainId", []), 16) != chain_id:
         raise RuntimeError("RPC chain id changed during deployment")
 
-    artifact = pathlib.Path(f"broadcast/Deploy.s.sol/{chain_id}/run-latest.json")
-    transactions = json.loads(artifact.read_text())["transactions"]
+    artifact = broadcast_path(chain_id)
+    broadcast = artifact.read_bytes()
+    transactions = json.loads(broadcast)["transactions"]
     by_name = {item["contractName"]: item for item in transactions}
     if len(transactions) != 2 or set(by_name) != {"ShapePackRenderer", "ShapePacks"}:
         raise RuntimeError("broadcast does not contain exactly the two expected creations")
@@ -108,22 +135,14 @@ def record(chain_id, url, shapes_input, admin_input):
         "deployer": deployer,
         "blockNumber": max(int(item["blockNumber"], 16) for item in receipts.values()),
     }
-    path = pathlib.Path(f"deployments/{chain_id}.json")
-    temporary = None
-    try:
-        with tempfile.NamedTemporaryFile("w", dir=path.parent, prefix=".deployment-", delete=False) as out:
-            temporary = out.name
-            json.dump(manifest, out, indent=2)
-            out.write("\n")
-        os.link(temporary, path)  # Refuse to replace an existing deployment record.
-    finally:
-        if temporary:
-            os.unlink(temporary)
+    if label:
+        save_new_file(broadcast_path(chain_id, label), broadcast)
+    save_new_file(path, (json.dumps(manifest, indent=2) + "\n").encode())
 
 
 if __name__ == "__main__":
     try:
-        record(int(sys.argv[1]), sys.argv[2], sys.argv[3], sys.argv[4])
+        record(int(sys.argv[1]), sys.argv[2], sys.argv[3], sys.argv[4], sys.argv[5] if len(sys.argv) > 5 else "")
     except (IndexError, KeyError, OSError, RuntimeError, ValueError) as exc:
         print(f"deployment readback failed: {exc}", file=sys.stderr)
         sys.exit(1)

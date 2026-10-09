@@ -12,7 +12,7 @@ import urllib.error
 import urllib.parse
 import urllib.request
 
-from record_deployment import address, rpc
+from record_deployment import address, broadcast_path, deployment_path, rpc
 
 
 ROOT = pathlib.Path(__file__).resolve().parent.parent
@@ -65,11 +65,11 @@ def standard_json_source(build_input):
     return json.dumps(compiler_input, separators=(",", ":"))
 
 
-def prepare(chain_id, rpc_url):
-    manifest = json.loads((ROOT / f"deployments/{chain_id}.json").read_text())
+def prepare(chain_id, rpc_url, label=""):
+    manifest = json.loads((ROOT / deployment_path(chain_id, label)).read_text())
     if manifest["chainId"] != chain_id:
         raise RuntimeError("deployment manifest has the wrong chain")
-    broadcast = json.loads((ROOT / f"broadcast/Deploy.s.sol/{chain_id}/run-latest.json").read_text())
+    broadcast = json.loads((ROOT / broadcast_path(chain_id, label)).read_text())
     transactions = broadcast["transactions"]
     if len(transactions) != len(CONTRACTS) or {t["contractName"] for t in transactions} != {
         name for name, _, _, _ in CONTRACTS
@@ -163,11 +163,12 @@ def submit(chain_id, name, path, target, constructor_args, compiler, source, key
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("target", choices=TARGETS)
+    parser.add_argument("--label", default="", help="deployment generation, for example v2")
     parser.add_argument("--submit", action="store_true", help="submit the checked input to Etherscan")
     args = parser.parse_args()
     require_primary_main()
     chain_id, rpc_url = TARGETS[args.target]
-    prepared = prepare(chain_id, rpc_url)
+    prepared = prepare(chain_id, rpc_url, args.label)
     if args.submit:
         key = os.environ.get("ETHERSCAN_API_KEY")
         if not key:

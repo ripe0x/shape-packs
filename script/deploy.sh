@@ -18,6 +18,8 @@
 #   FOUNDRY_PROFILE       forge profile; public chains require default so the verifier can
 #                         reproduce the exact deployment build.
 #   DRY_RUN=1             simulate only: no --broadcast, nothing written.
+#   DEPLOYMENT_LABEL      optional new deployment generation (for example v2); preserves the
+#                         previous broadcast and records deployments/<chain>-<label>.json.
 #   CONFIRM_MAINNET=yes   required to run the mainnet target at all, dry run included.
 set -euo pipefail
 
@@ -73,6 +75,16 @@ if [ "$TARGET" != "anvil" ] && [ "$FOUNDRY_PROFILE" != "default" ]; then
   exit 1
 fi
 DRY_RUN="${DRY_RUN:-0}"
+DEPLOYMENT_LABEL="${DEPLOYMENT_LABEL:-}"
+if [ -n "$DEPLOYMENT_LABEL" ] && { [[ ! "$DEPLOYMENT_LABEL" =~ ^[a-zA-Z0-9][a-zA-Z0-9_-]*$ ]] || [ "$DEPLOYMENT_LABEL" = latest ]; }; then
+  echo "refusing: DEPLOYMENT_LABEL must contain only letters, digits, _ or -, and cannot be latest" >&2
+  exit 1
+fi
+SUFFIX="${DEPLOYMENT_LABEL:+-$DEPLOYMENT_LABEL}"
+MANIFEST="deployments/${CHAIN_ID}${SUFFIX}.json"
+BROADCAST="broadcast/Deploy.s.sol/${CHAIN_ID}/run-latest.json"
+ARCHIVE="broadcast/Deploy.s.sol/${CHAIN_ID}/run-before-${DEPLOYMENT_LABEL}.json"
+SNAPSHOT="broadcast/Deploy.s.sol/${CHAIN_ID}/snapshot-${DEPLOYMENT_LABEL}.json"
 
 # The chain the RPC reports must be the chain the env file names.
 ACTUAL_CHAIN="$(cast chain-id --rpc-url "$RPC_URL")"
@@ -104,17 +116,27 @@ fi
 if [ "$DRY_RUN" = "1" ]; then
   echo "DRY_RUN=1: simulating only, nothing is broadcast or written"
 else
-  [ ! -e "deployments/${CHAIN_ID}.json" ] \
-    || { echo "refusing: deployments/${CHAIN_ID}.json already exists; reconcile before redeploying" >&2; exit 1; }
-  if [ "$TARGET" != "anvil" ] && [ -e "broadcast/Deploy.s.sol/${CHAIN_ID}/run-latest.json" ]; then
-    echo "refusing: prior broadcast exists; inspect receipts and archive run-latest.json before retrying" >&2
+  [ ! -e "$MANIFEST" ] \
+    || { echo "refusing: $MANIFEST already exists; reconcile before redeploying" >&2; exit 1; }
+  if [ -n "$DEPLOYMENT_LABEL" ] && { [ -e "$ARCHIVE" ] || [ -e "$SNAPSHOT" ]; }; then
+    echo "refusing: $DEPLOYMENT_LABEL marks a prior deployment attempt; inspect receipts before retrying" >&2
     exit 1
+  fi
+  if [ "$TARGET" != "anvil" ] && [ -e "$BROADCAST" ]; then
+    if [ -z "$DEPLOYMENT_LABEL" ]; then
+      echo "refusing: prior broadcast exists; inspect receipts before retrying" >&2
+      exit 1
+    fi
   fi
   ARGS+=(--broadcast --slow)
 fi
 
 # Compile every attempt, including dry runs, from a clean Foundry cache.
 forge clean
+if [ "$DRY_RUN" != "1" ] && [ "$TARGET" != "anvil" ] && [ -e "$BROADCAST" ]; then
+  mv "$BROADCAST" "$ARCHIVE"
+  echo "preserved prior broadcast at $ARCHIVE"
+fi
 echo "target=$TARGET chain=$CHAIN_ID profile=$FOUNDRY_PROFILE shapes=$SHAPES admin=${ADMIN:-<broadcaster>}"
 FORGE_STATUS=0
 forge script "${ARGS[@]}" || FORGE_STATUS=$?
@@ -123,15 +145,15 @@ if [ "$DRY_RUN" = "1" ]; then
   exit "$FORGE_STATUS"
 fi
 
-if [ ! -e "broadcast/Deploy.s.sol/${CHAIN_ID}/run-latest.json" ] \
-  || ! python3 script/record_deployment.py "$CHAIN_ID" "$RPC_URL" "$SHAPES" "${ADMIN:-}"; then
+if [ ! -e "$BROADCAST" ] \
+  || ! python3 script/record_deployment.py "$CHAIN_ID" "$RPC_URL" "$SHAPES" "${ADMIN:-}" "$DEPLOYMENT_LABEL"; then
   echo "broadcast may have sent transactions; inspect receipts before retrying" >&2
   exit 1
 fi
 
 echo
-echo "deployments/${CHAIN_ID}.json:"
-cat "deployments/${CHAIN_ID}.json"
+echo "$MANIFEST:"
+cat "$MANIFEST"
 echo
 
 if [ "$FORGE_STATUS" -ne 0 ]; then
@@ -140,5 +162,5 @@ if [ "$FORGE_STATUS" -ne 0 ]; then
 fi
 
 if [ "$TARGET" != "anvil" ]; then
-  echo "source verification pending: run python3 script/verify_renderer.py $TARGET --submit"
+  echo "source verification pending: run python3 script/verify_renderer.py $TARGET${DEPLOYMENT_LABEL:+ --label $DEPLOYMENT_LABEL} --submit"
 fi

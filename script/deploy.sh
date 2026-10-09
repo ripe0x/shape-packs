@@ -41,6 +41,10 @@ if [ "$TARGET" != "anvil" ]; then
     echo "refusing: $TARGET deploys require the primary main checkout" >&2
     exit 1
   fi
+  if [ -n "$(git status --porcelain)" ]; then
+    echo "refusing: $TARGET deploys require a clean main checkout" >&2
+    exit 1
+  fi
 fi
 
 # A caller's exports win over the env file.

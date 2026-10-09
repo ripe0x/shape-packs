@@ -18,7 +18,7 @@ stays fixed at 170 canvas units. Packs over twelve show their top twelve cards.
 The contractURI uses the same layout with three illustrative faces. Rendered
 1- through 12-Shape examples are in `preview/fan-contact-sheet.png` (ignored, local review
 artifact). The user accepted the layout for release. Default and testnet Foundry suites pass,
-223 tests each. The release tool passed nine focused tests and independent review. From clean
+223 tests each. The release tool passed ten focused tests and independent review. From clean
 primary main, `DRY_RUN=1 DEPLOYMENT_LABEL=v2 script/deploy.sh sepolia` passed against Tenderly's
 public RPC with `forge clean` and constructor readback; no transactions were sent. The existing
 manifest and broadcast remain unchanged. A v2 broadcast must be followed by receipt/readback

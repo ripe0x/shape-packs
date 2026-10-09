@@ -10,7 +10,8 @@ code and also lives in the Shapes repository as `SHAPE_PACKS_DESIGN.md`. It reco
 how it is created, extended and exited, what the contract may never do, how it renders, how the
 repository is laid out, and the decisions that were taken.
 
-Revision 2. Changes from revision 1: packs are extendable by their holder; there is no cap on
+Revision 3. The collection and token images use a centred fan; token faces are ranked by backing
+and token id, up to twelve. Revision 2 made packs extendable by their holder; there is no cap on
 pack size, so exit is chunkable; the pack's value is cached; the creator is recorded; the
 `Sealed` trait, `createdAt` and the `IShapePositionResolver` claim are gone; rule order and the
 approval wording are fixed.
@@ -364,20 +365,34 @@ struct PackRenderInput {
     uint256[] denominations;  // wei per ladder index
     uint256 mintedCount;
     address creator;
-    ShapeState[] topCards;    // the first up to three Shapes in contents order
+    ShapeState[] topCards;    // up to twelve Shapes, highest redeemable backing first
     string tokenNamePrefix;
     string description;
 }
 ```
 
-**Image.** A stack. The renderer draws the top cards (the first three in contents order, so the
-creator decides what shows; documented) through Shapes' live `renderer()`, using `renderSVG` for a
-seed-derived card and `renderSVGSampled` when `modules` is nonempty, fanned with a small offset,
-and the remaining cards as plain black rounded card backs behind them, up to a few so the stack
-reads as deep without drawing a thousand rectangles. The canvas is square with the stack inset,
-rounded and shadowed, matching `ShapeCollection.imageFor`. Drawing every card is not attempted;
-the three-card cap bounds artwork rendering. `tokenURI` still copies the full contents list and
-scans it to compute the makeup, so its cost grows with pack size.
+**Image.** A fan on a transparent square canvas, following the Draw Shapes index hero carousel's
+size steps and easing tilt. Even packs through twelve Shapes use a balanced centre pair: the two
+highest-backed faces have the same size and overlap like the two-Shape pack, while lower-backed
+faces fill matched left and right outer positions. The pair and its spacing scale together through
+six Shapes; eight, ten and twelve keep the six-Shape face sizes and add outer pairs. The first
+smaller pair sits 41.25% of the front-card width beyond the centre pair. Three Shapes keep the
+hero spacing. Odd counts from five onward use 75% of the
+initial preview's first centre step, with the highest-backed Shape centred in front and the rest
+alternating right and left. Beyond seven Shapes, even pack faces use the six-Shape sizes
+(966-unit front face), and odd pack faces use the seven-Shape sizes (1005-unit front face).
+Outer pairs extend both fans without shrinking their cards. Beyond the third tier, both
+fans use the same 180-unit step for each outer pair so twelve faces fit within
+the canvas. In every fan, the centre-to-centre step from the first smaller pair to the third tier
+is 170 canvas units, regardless of card count. The highest-backed
+face is always drawn on top. Equal backing is ordered by ascending token id. Up to twelve real
+Shape faces are drawn. For larger packs, these are the twelve highest-backed Shapes; the full
+count and makeup remain in metadata. This display sort never changes custody or contents order.
+The renderer uses Shapes' live `renderer()`, calling
+`renderSVG` for seed-derived cards and `renderSVGSampled` when `modules` is nonempty. Each face
+keeps its 5:7 aspect ratio and its art is clipped only to its own rounded card. There are no
+plain black backs. The fixed twelve-face ceiling bounds artwork rendering; `tokenURI` still
+copies and scans the full contents list, so its cost grows with pack size.
 
 **Name and description.** `Shape Pack 12`. Description: the shared editable copy, then the makeup
 in words: `3 x 0.01 ETH, 1 x 0.05 ETH. 0.08 ETH total.`, with an ASCII `x` so the JSON stays
@@ -394,8 +409,8 @@ byte-safe, using `FixedPoint.fmt` from Shapes so numbers print the way Shapes pr
 | `Source` | `Minted` / `Packed` / `Mixed` | all minted by the pack, all pulled from a wallet, or both |
 | `Creator` | checksummed address | who created the pack |
 
-`contractURI` is the collection name, the shared description and a seeded stack image: three
-cards from Shapes' collection previews over two backs.
+`contractURI` is the collection name, the shared description and the same fan layout with three
+illustrative Shapes collection previews. The image is illustrative, not the contents of any pack.
 
 ---
 

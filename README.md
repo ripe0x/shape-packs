@@ -175,9 +175,11 @@ struct PackState {
 
 Pack ids start at 1 and are never reissued, so `packOf(shapeId) == 0` means "not packed". That is
 the hook a site or indexer uses to say "this Shape is inside Pack #N". `tokenURI(packId)` is a
-fully onchain `data:` URI: a stack of up to three cards drawn through Shapes' live renderer (the
-first three in contents order, so the creator decides what shows) over plain card backs, with
-the makeup in the description and the attributes.
+fully onchain `data:` URI: a fan of up to twelve real Shape faces on a transparent canvas, with
+highest redeemable backing in front and equal-value ties broken by token id. Even packs through
+twelve Shapes show a balanced centre pair, with smaller faces distributed on both sides.
+Packs with more than twelve Shapes show their twelve highest-backed Shapes; the full makeup
+remains in the description and attributes. Display order does not change contents or custody.
 
 ## Trust model
 
@@ -251,7 +253,7 @@ MAINNET_RPC_URL=https://ethereum-rpc.publicnode.com forge test --mc ForkTest
 ```
 
 To look at the artwork without deploying anything, `forge script script/Preview.s.sol` writes the
-`tokenURI` of a one-, three- and ten-Shape pack and the `contractURI` to `preview/` from a
+`tokenURI` of 1- through 12-Shape packs and the `contractURI` to `preview/` from a
 throwaway local Shapes. Decode the base64 JSON and its `image` field to get the SVGs.
 
 ## Deploying

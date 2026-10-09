@@ -44,7 +44,7 @@ contract ShapePacks is ERC721, IShapePacks, IERC2981, IERC721Receiver, Reentranc
 
     uint256 private constant MAX_NAME_BYTES = 64;
     uint256 private constant MAX_DESCRIPTION_BYTES = 2048;
-    uint256 private constant TOP_CARDS = 3;
+    uint256 private constant TOP_CARDS = 12;
 
     /// @inheritdoc IShapePacks
     // forge-lint: disable-next-line(screaming-snake-case-immutable)
@@ -403,8 +403,8 @@ contract ShapePacks is ERC721, IShapePacks, IERC2981, IERC721Receiver, Reentranc
     /* ------------------------------ metadata ------------------------------ */
 
     /// @notice Fully onchain metadata for a live pack, built by the renderer from one struct.
-    /// @dev Reverts for a pack that is not live. Only the first three Shapes in contents order
-    ///      are passed as cards; copying contents and computing makeup still scale with pack size.
+    /// @dev Reverts for a pack that is not live. Up to twelve Shapes, ranked by backing and then
+    ///      token id, are passed as cards. Contents order is unaffected.
     function tokenURI(uint256 packId) public view override returns (string memory) {
         _requireOwned(packId);
         IShapes s = IShapes(shapes);
@@ -416,10 +416,10 @@ contract ShapePacks is ERC721, IShapePacks, IERC2981, IERC721Receiver, Reentranc
             denominations[d] = s.denominationAt(d);
         }
 
-        uint256 top = ids.length < TOP_CARDS ? ids.length : TOP_CARDS;
-        ShapeState[] memory topCards = new ShapeState[](top);
-        for (uint256 i = 0; i < top; ++i) {
-            topCards[i] = s.shapeState(ids[i]);
+        (uint32[] memory counts, uint256[] memory topIds) = _previewOrder(s, ids, denominations);
+        ShapeState[] memory topCards = new ShapeState[](topIds.length);
+        for (uint256 i = 0; i < topIds.length; ++i) {
+            topCards[i] = s.shapeState(topIds[i]);
         }
 
         PackRenderInput memory input = PackRenderInput({
@@ -427,7 +427,7 @@ contract ShapePacks is ERC721, IShapePacks, IERC2981, IERC721Receiver, Reentranc
             shapeCount: ids.length,
             valueWei: _valueWei[packId],
             unitWei: s.unit(),
-            counts: _makeup(ids),
+            counts: counts,
             denominations: denominations,
             mintedCount: _mintedCount[packId],
             creator: _creator[packId],
@@ -509,6 +509,43 @@ contract ShapePacks is ERC721, IShapePacks, IERC2981, IERC721Receiver, Reentranc
         counts = new uint32[](s.denominationCount());
         for (uint256 i = 0; i < ids.length; ++i) {
             ++counts[s.denomIndexOf(ids[i])];
+        }
+    }
+
+    /// @dev Build the full makeup and keep only the highest-backed ids for the image. Packed
+    ///      Shapes cannot be Black, so their denomination is their redeemable backing. An
+    ///      insertion into a twelve-element window avoids sorting a potentially unbounded pack.
+    function _previewOrder(IShapes s, uint256[] memory ids, uint256[] memory denominations)
+        internal
+        view
+        returns (uint32[] memory counts, uint256[] memory topIds)
+    {
+        counts = new uint32[](denominations.length);
+        uint256 limit = ids.length < TOP_CARDS ? ids.length : TOP_CARDS;
+        topIds = new uint256[](limit);
+        uint256[] memory topValues = new uint256[](limit);
+        uint256 filled;
+        for (uint256 i = 0; i < ids.length; ++i) {
+            uint256 id = ids[i];
+            uint8 d = s.denomIndexOf(id);
+            ++counts[d];
+            uint256 value = denominations[d];
+            if (filled == limit) {
+                uint256 last = limit - 1;
+                if (value < topValues[last] || (value == topValues[last] && id >= topIds[last])) continue;
+            }
+            uint256 at;
+            while (at < filled && (topValues[at] > value || (topValues[at] == value && topIds[at] < id))) {
+                ++at;
+            }
+            if (at == limit) continue;
+            if (filled < limit) ++filled;
+            for (uint256 j = filled - 1; j > at; --j) {
+                topIds[j] = topIds[j - 1];
+                topValues[j] = topValues[j - 1];
+            }
+            topIds[at] = id;
+            topValues[at] = value;
         }
     }
 

@@ -1,10 +1,24 @@
 # Project state
 
-Phase: Sepolia deployed; both contracts source verified
-Branch: main (primary checkout)
-Code candidate: f09773dc75f572708899ef3b6b3fcad06ec005f1
+Phase: Renderer accepted; Sepolia release preparation
+Branch: detached implementation worktree; deployment remains restricted to primary main
+Code candidate: 6275bf4 (accepted October 9, 2026)
 Product rules: [DESIGN.md](../DESIGN.md) and [SECURITY.md](../SECURITY.md)
-Launch status: Sepolia contracts live and source verified; mainnet not deployed
+Launch status: Existing Sepolia contracts remain live; replacement contracts are not deployed
+Blocker: the live ShapePacks producer caps the preview at eleven faces, so a renderer-only
+upgrade cannot meet the accepted twelve-face rule. Three packs remain live in that collection.
+
+The redesign draws up to twelve actual Shape faces on a transparent canvas, ordered by redeemable
+backing with token-id ties. Even packs through twelve use a balanced two-card centre with smaller
+faces distributed in matched left and right pairs. Odd packs retain a single highest-value face
+centred in front. Three Shapes retain the Draw Shapes hero spacing. Beyond seven, even packs keep
+the six-Shape face sizes and odd packs keep the seven-Shape face sizes. Every step beyond the
+third tier is 180 canvas units in both layouts. The gap into the third tier
+stays fixed at 170 canvas units. Packs over twelve show their top twelve cards.
+The contractURI uses the same layout with three illustrative faces. Rendered
+1- through 12-Shape examples are in `preview/fan-contact-sheet.png` (ignored, local review
+artifact). The user accepted the layout for release. Default and testnet
+Foundry suites pass, 223 tests each; deployment and live RPC checks remain pending.
 
 On October 9, 2026, both creation receipts succeeded. `ShapePackRenderer` is at
 `0xd9ff1d1b7dd7b26a7b52c5f7f8abad7d216ceeb4` (transaction
@@ -26,4 +40,5 @@ The release workflow now separates broadcasting from source verification. The ve
 both live creation transactions against one full deployment build and submits only Standard JSON
 fields, so neither of the two failed retry paths is used for a future mainnet deployment.
 
-Next: run Sepolia post-deployment smoke checks before considering mainnet. Do not redeploy Sepolia.
+Next: resolve whether Sepolia gets a new collection, an update to the old collection, or both;
+then prepare a clean-main release rehearsal and commands for the user to execute.

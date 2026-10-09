@@ -14,6 +14,7 @@
 #                         the password, or reads KEYSTORE_PASSWORD_FILE if set.
 #                         anvil needs neither: it uses anvil's well-known account 0 key.
 #   ETHERSCAN_API_KEY     required for sepolia and mainnet (--verify).
+#   GAS_ESTIMATE_MULTIPLIER  Sepolia env value for post-Glamsterdam creation gas.
 #   FOUNDRY_PROFILE       forge profile; defaults to default. The contracts are ladder-agnostic,
 #                         so the same build deploys to every target.
 #   DRY_RUN=1             simulate only: no --broadcast, nothing written.
@@ -70,6 +71,9 @@ ACTUAL_CHAIN="$(cast chain-id --rpc-url "$RPC_URL")"
   || { echo "refusing: $TARGET expects chain $CHAIN_ID, RPC reports $ACTUAL_CHAIN" >&2; exit 1; }
 
 ARGS=(script/Deploy.s.sol --rpc-url "$RPC_URL")
+if [ "$TARGET" = "sepolia" ] && [ -n "${GAS_ESTIMATE_MULTIPLIER:-}" ]; then
+  ARGS+=(--gas-estimate-multiplier "$GAS_ESTIMATE_MULTIPLIER")
+fi
 
 # Signer.
 if [ "$TARGET" = "anvil" ]; then
@@ -91,7 +95,13 @@ fi
 if [ "$DRY_RUN" = "1" ]; then
   echo "DRY_RUN=1: simulating only, nothing is broadcast or written"
 else
-  ARGS+=(--broadcast)
+  [ ! -e "deployments/${CHAIN_ID}.json" ] \
+    || { echo "refusing: deployments/${CHAIN_ID}.json already exists; reconcile before redeploying" >&2; exit 1; }
+  if [ "$TARGET" != "anvil" ] && [ -e "broadcast/Deploy.s.sol/${CHAIN_ID}/run-latest.json" ]; then
+    echo "refusing: prior broadcast exists; inspect receipts and archive run-latest.json before retrying" >&2
+    exit 1
+  fi
+  ARGS+=(--broadcast --slow)
   if [ "$TARGET" != "anvil" ]; then
     : "${ETHERSCAN_API_KEY:?ETHERSCAN_API_KEY is required to verify on $TARGET}"
     ARGS+=(--verify)
@@ -101,9 +111,18 @@ fi
 # Compile every attempt, including dry runs, from a clean Foundry cache.
 forge clean
 echo "target=$TARGET chain=$CHAIN_ID profile=$FOUNDRY_PROFILE shapes=$SHAPES admin=${ADMIN:-<broadcaster>}"
-forge script "${ARGS[@]}"
+if ! forge script "${ARGS[@]}"; then
+  if [ "$DRY_RUN" != "1" ]; then
+    echo "broadcast may have sent transactions; inspect receipts before retrying" >&2
+  fi
+  exit 1
+fi
 
 if [ "$DRY_RUN" != "1" ]; then
+  if ! python3 script/record_deployment.py "$CHAIN_ID" "$RPC_URL" "$SHAPES" "${ADMIN:-}"; then
+    echo "broadcast may have succeeded; reconcile receipts before retrying" >&2
+    exit 1
+  fi
   echo
   echo "deployments/${CHAIN_ID}.json:"
   cat "deployments/${CHAIN_ID}.json"

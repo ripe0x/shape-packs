@@ -214,8 +214,9 @@ lib/
 script/
   Deploy.s.sol               one script, chain-id gated: anvil, sepolia, mainnet
   deploy.sh                  the wrapper; reads script/env/<target>.env
+  record_deployment.py       checks receipts and live state before writing the manifest
   env/{anvil,sepolia,mainnet}.env   SHAPES per chain, ADMIN; nothing secret
-deployments/                 <chainId>.json, written by a broadcast
+deployments/                 <chainId>.json, written after a verified broadcast
 test/                        creation, additions, exits, receiver, metadata, invariants, fork
 foundry.toml                 profiles, remappings, rpc endpoints
 ```
@@ -258,11 +259,16 @@ throwaway local Shapes. Decode the base64 JSON and its `image` field to get the 
 script/deploy.sh <anvil|sepolia|mainnet>
 ```
 
-`script/deploy.sh` sources `script/env/<target>.env` (values only, no secrets), requires an RPC URL,
-runs `forge clean`, then runs `forge script script/Deploy.s.sol --broadcast`. For `sepolia` and
-`mainnet` it adds `--verify`
-and requires `ETHERSCAN_API_KEY`. Run these public-chain targets from the primary checkout on
-`main`; the wrapper refuses linked worktrees and other branches.
+`script/deploy.sh` sources `script/env/<target>.env` (values only, no secrets), checks the RPC chain,
+runs `forge clean`, then runs `forge script script/Deploy.s.sol --broadcast --slow`. For `sepolia`
+and `mainnet` it adds `--verify` and requires `ETHERSCAN_API_KEY`. Run these public-chain targets
+from the primary checkout on `main`; the wrapper refuses linked worktrees and other branches.
+The wrapper refuses to overwrite an existing deployment manifest or start a new broadcast while
+an earlier `run-latest.json` still needs reconciliation.
+
+Sepolia has Glamsterdam's higher code-deposit cost. The env file sets a 1000% gas-estimate
+multiplier because this Foundry build simulates Cancun costs. The transactions are sent
+sequentially so a failed renderer creation cannot be followed by a packs creation.
 
 | Variable | Meaning |
 | --- | --- |
@@ -294,10 +300,12 @@ and requires:
 - `renderer.shapes() == SHAPES`
 - `packs.supportsInterface(type(IShapePacks).interfaceId)`
 
-Under `--broadcast` it then writes `deployments/<chainId>.json` with `chainId`, `shapes`, `shapePacks`,
-`shapePackRenderer`, `admin`, `minPackValueWei` (a decimal string), `deployer` and `blockNumber` (the block
-the script ran against), and the wrapper prints it. Presentation is left unlocked at launch, as
-Shapes' was; lock it once the art is final.
+After a successful broadcast and verification, the wrapper checks both receipts and live constructor
+state through the RPC. Only then does it write `deployments/<chainId>.json` with `chainId`, `shapes`,
+`shapePacks`, `shapePackRenderer`, `admin`, `minPackValueWei` (a decimal string), `deployer` and
+`blockNumber` (the latest deployment block). If a run fails, inspect its broadcast receipts before
+retrying; a verification error can occur after contracts were deployed. Presentation is left
+unlocked at launch, as Shapes' was; lock it once the art is final.
 
 ## License
 

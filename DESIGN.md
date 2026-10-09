@@ -418,7 +418,8 @@ lib/
   shapes/                      git submodule at 1b84c10; carries lib/openzeppelin-contracts and lib/forge-std
 script/
   Deploy.s.sol                 one script, chain-id gated like Shapes': anvil, sepolia, mainnet
-  deploy.sh                    the wrapper; reads script/env/<target>.env, reads back, writes deployments/<chainId>.json
+  deploy.sh                    the wrapper; reads script/env/<target>.env, cleans, broadcasts sequentially
+  record_deployment.py         verifies receipts and live state, then writes deployments/<chainId>.json
   env/{anvil,sepolia,mainnet}.env   SHAPES address per chain, ADMIN; nothing secret
 test/
   utils/DeployShapes.sol       deploys Shapes + renderer + collection from the submodule for local tests
@@ -446,8 +447,9 @@ Sepolia ladder.
 ### Deployment
 
 `Deploy.s.sol` deploys `ShapePackRenderer(shapes)`, then `ShapePacks(shapes, renderer, admin)`,
-reads back `shapes()`, `MIN_PACK_VALUE()` (asserting `3 * unit()`), `renderer()` and `admin()`,
-and writes `deployments/<chainId>.json`. Sepolia first against the Sepolia Shapes, then mainnet
+and checks `shapes()`, `MIN_PACK_VALUE()` (asserting `3 * unit()`), `renderer()` and `admin()` in
+simulation. After broadcast, the wrapper repeats those checks against live receipts and code before
+writing `deployments/<chainId>.json`. Sepolia first against the Sepolia Shapes, then mainnet
 against `0x6fe9…faf0`. Presentation is left unlocked at launch, as Shapes' was, and locked once
 the art is final.
 

@@ -2,7 +2,6 @@
 pragma solidity 0.8.28;
 
 import {Script} from "forge-std/Script.sol";
-import {VmSafe} from "forge-std/Vm.sol";
 
 import {IShapes} from "shapes/interfaces/IShapes.sol";
 import {IShapePacks} from "../src/interfaces/IShapePacks.sol";
@@ -10,8 +9,8 @@ import {ShapePackRenderer} from "../src/ShapePackRenderer.sol";
 import {ShapePacks} from "../src/ShapePacks.sol";
 
 /// @notice Deploys `ShapePackRenderer` and `ShapePacks` against an already-deployed Shapes token,
-///         reads every constructor input back from the chain, and records the result in
-///         `deployments/<chainId>.json`.
+///         reads every constructor input back from the simulated state. The shell wrapper records
+///         verified onchain results in `deployments/<chainId>.json` after broadcast succeeds.
 ///
 /// @dev One script for every chain. The chain id decides which Shapes address is acceptable;
 ///      every other input is a value passed in the environment (see script/deploy.sh and
@@ -24,8 +23,7 @@ import {ShapePacks} from "../src/ShapePacks.sol";
 ///                 or zero. The admin reaches the renderer and the metadata copy only, never
 ///                 custody; hold it in a multisig and lock presentation once the art is final.
 ///
-///      The deployer is the account that signs the broadcast. Under `--broadcast` the script
-///      writes the record; a dry run (simulation only) writes nothing.
+///      The deployer is the account that signs the broadcast.
 contract Deploy is Script {
     address internal constant MAINNET_SHAPES = 0x6fE9193276bF7aBCbEE44AB7aFd717d637D6FAf0;
 
@@ -49,7 +47,6 @@ contract Deploy is Script {
         vm.stopBroadcast();
 
         _readback(shapes, renderer, packs, admin);
-        _record(shapes, renderer, packs, admin, deployer);
     }
 
     /// @dev Chain-id gate. Mainnet is pinned to the deployed collection so a mistyped address
@@ -79,35 +76,5 @@ contract Deploy is Script {
         require(packs.supportsInterface(type(IShapePacks).interfaceId), "IShapePacks interface missing");
         require(address(renderer).code.length != 0, "renderer missing code");
         require(address(packs).code.length != 0, "packs missing code");
-    }
-
-    /// @dev `deployments/<chainId>.json`. Amounts are decimal strings so a JSON reader without
-    ///      256-bit integers does not round them. `blockNumber` is the block the script ran
-    ///      against; the broadcast transactions land at or just after it.
-    function _record(
-        address shapes,
-        ShapePackRenderer renderer,
-        ShapePacks packs,
-        address admin,
-        address deployer
-    ) private {
-        if (
-            !vm.isContext(VmSafe.ForgeContext.ScriptBroadcast)
-                && !vm.isContext(VmSafe.ForgeContext.ScriptResume)
-        ) {
-            return;
-        }
-
-        string memory k = "deployment";
-        vm.serializeUint(k, "chainId", block.chainid);
-        vm.serializeAddress(k, "shapes", shapes);
-        vm.serializeAddress(k, "shapePacks", address(packs));
-        vm.serializeAddress(k, "shapePackRenderer", address(renderer));
-        vm.serializeAddress(k, "admin", admin);
-        vm.serializeString(k, "minPackValueWei", vm.toString(packs.MIN_PACK_VALUE()));
-        vm.serializeAddress(k, "deployer", deployer);
-        string memory json = vm.serializeUint(k, "blockNumber", block.number);
-
-        vm.writeJson(json, string.concat("./deployments/", vm.toString(block.chainid), ".json"));
     }
 }

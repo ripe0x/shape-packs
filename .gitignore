@@ -9,3 +9,5 @@ broadcast/
 node_modules/
 lcov.info
 preview/
+__pycache__/
+*.pyc

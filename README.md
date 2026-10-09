@@ -264,7 +264,7 @@ and requires `ETHERSCAN_API_KEY`.
 
 | Variable | Meaning |
 | --- | --- |
-| `RPC_URL` | RPC endpoint. Defaults to the env file's `RPC_DEFAULT`. |
+| `RPC_URL` | RPC endpoint. Sepolia and mainnet default to Tenderly's public RPC URLs. |
 | `SHAPES` | The Shapes token to wrap. Set in the env file; the shell wins. Required. |
 | `ADMIN` | Presentation admin. Defaults to the broadcaster when empty. |
 | `PRIVATE_KEY` | Signer for `sepolia` and `mainnet`... |

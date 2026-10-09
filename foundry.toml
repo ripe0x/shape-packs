@@ -61,8 +61,8 @@ runs = 256
 depth = 96
 
 [rpc_endpoints]
-mainnet = "${MAINNET_RPC_URL}"
-sepolia = "${SEPOLIA_RPC_URL}"
+mainnet = "https://gateway.tenderly.co/public/mainnet"
+sepolia = "https://gateway.tenderly.co/public/sepolia"
 
 [etherscan]
 mainnet = { key = "${ETHERSCAN_API_KEY}", chain = 1 }

@@ -18,6 +18,10 @@ The verified onchain manifest is `deployments/11155111.json`.
 Etherscan shows an exact source match for `ShapePacks`; `ShapePackRenderer` still needs source
 verification. Forge's one-of-two verification failure happened after both contracts deployed.
 The wrapper now records valid onchain state even when the explorer step exits nonzero.
+The later standalone `forge verify-contract` attempt also failed: it compiled only the renderer's
+18-source import graph, while the deployment script compiled 47 sources. Rebuilding
+`script/Deploy.s.sol` with build info reproduces the live renderer creation bytecode exactly.
 
-Next: verify `ShapePackRenderer` alone on Etherscan from the primary `main` checkout, then
-confirm both pages show verified source. Do not broadcast the deployment script again.
+Next: run `python3 script/verify_renderer.py sepolia` on the primary `main` checkout, then
+`python3 script/verify_renderer.py sepolia --submit` with `ETHERSCAN_API_KEY` set. Confirm both
+Etherscan pages show verified source. Do not broadcast the deployment script again.

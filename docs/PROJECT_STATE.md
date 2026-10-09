@@ -6,15 +6,15 @@ Code candidate: local implementation commit under visual review (current HEAD)
 Product rules: [DESIGN.md](../DESIGN.md) and [SECURITY.md](../SECURITY.md)
 Launch status: Existing Sepolia contracts remain live; replacement contracts are not deployed
 
-The redesign draws up to eleven actual Shape faces, ordered by redeemable backing with token-id
-ties. Packs with 2, 4, 6 or 8 Shapes use a scaled two-card centre with smaller faces distributed
+The redesign draws up to eleven actual Shape faces on a transparent canvas, ordered by redeemable
+backing with token-id ties. Packs with 2, 4, 6 or 8 Shapes use a scaled two-card centre with smaller faces distributed
 in matched left and right pairs. Odd counts and counts of ten or more retain a single highest-value
 face centred in front, using the Draw Shapes hero's size and tilt steps. Three Shapes retain the
 hero spacing; other single-centre fans use 75% of the initial preview's centre spacing.
 The contractURI uses the same layout with three illustrative faces. Rendered
 1- through 12-Shape examples are in `preview/fan-contact-sheet.png` (ignored, local review
 artifact). The user requested visual confirmation before the layout is final. Default and testnet
-Foundry suites pass, 221 tests each; deployment and live RPC checks remain pending.
+Foundry suites pass, 222 tests each; deployment and live RPC checks remain pending.
 
 On October 9, 2026, both creation receipts succeeded. `ShapePackRenderer` is at
 `0xd9ff1d1b7dd7b26a7b52c5f7f8abad7d216ceeb4` (transaction

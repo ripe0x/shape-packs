@@ -371,7 +371,7 @@ struct PackRenderInput {
 }
 ```
 
-**Image.** A fan on a square canvas, following the Draw Shapes index hero carousel's
+**Image.** A fan on a transparent square canvas, following the Draw Shapes index hero carousel's
 size steps and easing tilt. Packs with 2, 4, 6 or 8 Shapes use a balanced centre pair: the two
 highest-backed faces have the same size and overlap like the two-Shape pack, while lower-backed
 faces fill matched left and right outer positions. The pair and its spacing scale together as

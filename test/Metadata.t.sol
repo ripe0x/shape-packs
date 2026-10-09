@@ -295,6 +295,15 @@ contract MetadataTest is MetadataHelpers {
         assertEq(countOf(svg, "<svg"), 3, "outer canvas, slot, and Shape art");
     }
 
+    function test_TokenAndCollectionImagesHaveTransparentCanvas() public {
+        string memory tokenSvg = svgOfPack(createFor(alice, noIds(), mintsOf(1, 1)));
+        string memory collectionSvg = svgOfJson(decodeJson(packs.contractURI()));
+        assertTrue(contains(tokenSvg, "</defs><g transform="), "token cards start on transparent canvas");
+        assertTrue(
+            contains(collectionSvg, "</defs><g transform="), "collection cards start on transparent canvas"
+        );
+    }
+
     function test_TwoShapesUseBalancedPairWithHighestOnTop() public {
         uint256 packId = createFor(alice, noIds(), mintsOf(1, 2));
         string memory svg = svgOfPack(packId);

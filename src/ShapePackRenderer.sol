@@ -272,7 +272,7 @@ contract ShapePackRenderer is IShapePackRenderer, IERC165 {
         else slot.angle = right ? FixedPoint.toString(11 - pair * 2) : _neg(13 - pair * 2);
     }
 
-    /// @dev Canvas, white ground, shadow and local rounded clip paths for each Shape SVG.
+    /// @dev Transparent canvas, shadows and local rounded clip paths for each Shape SVG.
     function _open(uint256 cardCount) private pure returns (bytes memory out) {
         out = abi.encodePacked(
             '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 3840 3840" width="3840" height="3840"'
@@ -290,7 +290,7 @@ contract ShapePackRenderer is IShapePackRenderer, IERC165 {
                 "</clipPath>"
             );
         }
-        out = abi.encodePacked(out, '</defs><rect width="3840" height="3840" fill="#fff"/>');
+        out = abi.encodePacked(out, "</defs>");
     }
 
     /// @dev A Shapes SVG sits in a 2000x2800 local viewBox, scaled to the slot without distortion.

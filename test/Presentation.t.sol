@@ -36,7 +36,9 @@ contract StubPackRenderer is IShapePackRenderer, IERC165 {
             ":",
             input.tokenNamePrefix,
             ":",
-            input.description
+            input.description,
+            ":",
+            FixedPoint.toString(input.topCards.length)
         );
     }
 
@@ -140,6 +142,10 @@ contract PresentationTest is MetadataHelpers {
 
         vm.expectRevert(err);
         vm.prank(who);
+        packs.setPreviewCardLimit(1);
+
+        vm.expectRevert(err);
+        vm.prank(who);
         packs.setMetadataCopy("x", "y");
 
         vm.expectRevert(err);
@@ -152,6 +158,7 @@ contract PresentationTest is MetadataHelpers {
     function test_Defaults() public view {
         assertEq(packs.admin(), admin);
         assertEq(packs.renderer(), address(packRenderer));
+        assertEq(packs.previewCardLimit(), 12);
         assertEq(packs.shapes(), address(shapes));
         assertFalse(packs.presentationLocked());
         assertEq(packs.name(), "Shape Packs");
@@ -450,7 +457,7 @@ contract PresentationTest is MetadataHelpers {
 
         // The stub echoes what ShapePacks handed it: id, count, value, and the stored copy.
         string memory expected = string.concat(
-            "stub:1:3:", FixedPoint.toString(3 * amountAt(0)), ":Shape Pack :", packs.description()
+            "stub:1:3:", FixedPoint.toString(3 * amountAt(0)), ":Shape Pack :", packs.description(), ":3"
         );
         assertEq(packs.tokenURI(packId), expected);
         assertEq(packs.contractURI(), string.concat("stub-contract:Shape Packs:", packs.description()));
@@ -473,6 +480,55 @@ contract PresentationTest is MetadataHelpers {
         packs.setRenderer(address(liar));
         assertEq(packs.renderer(), address(packRenderer));
         assertGt(bytes(packs.tokenURI(packId)).length, 0);
+    }
+
+    /* ------------------------- previewCardLimit ------------------------- */
+
+    function test_SetPreviewCardLimitRejectsNonAdminAndZero() public {
+        vm.expectRevert(_unauthorized(bob));
+        vm.prank(bob);
+        packs.setPreviewCardLimit(5);
+
+        vm.expectRevert(abi.encodeWithSelector(IShapePacks.InvalidPreviewCardLimit.selector, 0));
+        vm.prank(admin);
+        packs.setPreviewCardLimit(0);
+        assertEq(packs.previewCardLimit(), 12);
+    }
+
+    function test_SetPreviewCardLimitChangesRendererInputAboveTwelve() public {
+        uint256 packId = createFor(alice, noIds(), mintsOf(0, 13));
+        vm.prank(admin);
+        packs.setRenderer(address(stub));
+        assertTrue(endsWith(packs.tokenURI(packId), ":12"), "default forwarded cards");
+
+        vm.recordLogs();
+        vm.prank(admin);
+        packs.setPreviewCardLimit(5);
+        Vm.Log[] memory logs = vm.getRecordedLogs();
+        assertEq(_count(logs, IShapePacks.PreviewCardLimitUpdated.selector), 1);
+        assertEq(_count(logs, IShapePacks.BatchMetadataUpdate.selector), 1);
+        assertEq(_count(logs, IShapePacks.ContractURIUpdated.selector), 0);
+        assertEq(packs.previewCardLimit(), 5);
+        assertTrue(endsWith(packs.tokenURI(packId), ":5"), "lowered preview");
+
+        vm.prank(admin);
+        packs.setPreviewCardLimit(13);
+        assertEq(packs.previewCardLimit(), 13);
+        assertTrue(endsWith(packs.tokenURI(packId), ":13"), "future renderer sees all thirteen");
+
+        vm.prank(admin);
+        packs.setRenderer(address(packRenderer));
+        assertEq(countOf(svgOfPack(packId), '<clipPath id="c'), 12, "current renderer still caps at twelve");
+    }
+
+    function test_SetPreviewCardLimitWithoutPacksHasNoBatchSignal() public {
+        vm.recordLogs();
+        vm.prank(admin);
+        packs.setPreviewCardLimit(20);
+        Vm.Log[] memory logs = vm.getRecordedLogs();
+        assertEq(_count(logs, IShapePacks.PreviewCardLimitUpdated.selector), 1);
+        assertEq(_count(logs, IShapePacks.BatchMetadataUpdate.selector), 0);
+        assertEq(_count(logs, IShapePacks.ContractURIUpdated.selector), 0);
     }
 
     /* ------------------------------ setMetadataCopy ------------------------------ */

@@ -65,6 +65,7 @@ interface IShapePacks is IERC721, IERC721Value {
     event EthClaimed(uint256 indexed packId, address indexed recipient, uint256[] shapeIds, uint256 valueWei);
 
     event RendererUpdated(address indexed renderer);
+    event PreviewCardLimitUpdated(uint256 limit);
     event MetadataCopySet(string tokenNamePrefix, string description);
     event PresentationLocked(address indexed renderer);
     /// @notice ERC-7572.
@@ -106,6 +107,8 @@ interface IShapePacks is IERC721, IERC721Value {
     error UnsupportedRenderer(address renderer);
     /// @notice A copy field is too long or not JSON-safe. 0 is the name prefix, 1 the description.
     error InvalidCopy(uint8 field);
+    /// @notice A zero preview limit would hide every Shape card.
+    error InvalidPreviewCardLimit(uint256 limit);
     error AdminUnauthorizedAccount(address account);
     error AdminInvalidAdmin(address admin);
     /// @notice A pack token may not be held by this contract: it could never be opened.
@@ -219,6 +222,8 @@ interface IShapePacks is IERC721, IERC721Value {
     function transferAdmin(address newAdmin) external;
     function renounceAdmin() external;
     function renderer() external view returns (address);
+    /// @notice Maximum Shape states sent to the renderer for each token image; defaults to 12.
+    function previewCardLimit() external view returns (uint256);
     function presentationLocked() external view returns (bool);
     function tokenNamePrefix() external view returns (string memory);
     function description() external view returns (string memory);
@@ -226,12 +231,17 @@ interface IShapePacks is IERC721, IERC721Value {
     /// @notice Replaces the renderer. Admin-only until `lockPresentation`.
     function setRenderer(address newRenderer) external;
 
+    /// @notice Sets a positive number of highest-backed Shapes to send to the renderer.
+    /// @dev Admin-only until `lockPresentation`. A renderer may draw fewer cards than requested;
+    ///      large limits can make `tokenURI` expensive for large packs. Signals token metadata changes.
+    function setPreviewCardLimit(uint256 newLimit) external;
+
     /// @notice Replaces the token name prefix (at most 64 bytes) and the shared description (at
     ///         most 2048 bytes). Both must be printable ASCII with no `"` or `\`. Admin-only until
     ///         `lockPresentation`.
     function setMetadataCopy(string calldata tokenNamePrefix_, string calldata description_) external;
 
-    /// @notice Permanently freezes the renderer and the copy. Admin-only.
+    /// @notice Permanently freezes the renderer, preview limit and copy. Admin-only.
     function lockPresentation() external;
 
     /// @notice ERC-7572 collection metadata.

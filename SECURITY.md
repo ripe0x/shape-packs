@@ -19,8 +19,8 @@ unable to open or redeem their pack for exactly the Shapes, or exactly the ETH, 
 ## The threat model
 
 The contract has no owner over custody. A separate, transferable `admin()` administers presentation
-only: the renderer address and the shared name prefix and description, lockable together and
-permanently with `lockPresentation()`, renounceable. It cannot reach a Shape, a pack, ETH, or the
+only: the renderer address, preview-card limit and shared name prefix and description, lockable
+together and permanently with `lockPresentation()`, renounceable. It cannot reach a Shape, a pack, ETH, or the
 right to exit.
 
 **What the contract never does**
@@ -143,21 +143,23 @@ Exit is irrevocable and all-or-nothing at the token level, with no way to go bac
 the claimant is a contract or key that is lost, what remains is lost with it; that is the owner's
 choice of `claimant`.
 
-### 6. Renderer and copy are admin-replaceable until locked — presentation only
+### 6. Renderer, preview limit and copy are admin-replaceable until locked — presentation only
 
-*Informational.* The admin can replace the renderer and edit the name prefix and description until
+*Informational.* The admin can replace the renderer, change the preview-card limit, and edit the name prefix and description until
 `lockPresentation()`. The renderer is `view`-only and is called only by `tokenURI` and `contractURI`;
 the copy is read only by those. Neither can touch ETH, a Shape, a pack or who may exit; a replacement
-changes appearance only. A compromised admin could point `tokenURI` at a renderer producing
+changes presentation only. A compromised admin could point `tokenURI` at a renderer producing
 misleading or offensive metadata, or set a misleading description. `setRenderer` requires code that
 answers ERC-165 for `IShapePackRenderer` but does not smoke-call it, so a broken renderer would make
-`tokenURI` revert until replaced; this is cosmetic.
+`tokenURI` revert until replaced; this is cosmetic. The preview limit must be positive and has no
+fixed maximum, so a very high setting can make metadata reads run out of gas for large packs.
 
 Copy is bounded (64 and 2048 bytes) and checked JSON-safe (printable ASCII, no `"` or `\`), so it
 cannot break or restructure the JSON. It is not HTML-escaped, so a marketplace that renders
 `description` as HTML would display admin-supplied markup. `setRenderer` and `setMetadataCopy`
 emit ERC-4906 `BatchMetadataUpdate(1, totalMinted)` and ERC-7572 `ContractURIUpdated()`.
-`lockPresentation` emits `PresentationLocked` and freezes both permanently; renouncing admin freezes
+`setPreviewCardLimit` emits an ERC-4906 batch update because only token images change.
+`lockPresentation` emits `PresentationLocked` and freezes all three permanently; renouncing admin freezes
 them at their last values. Until then hold the admin in a multisig. The deployed art is also drawn
 through Shapes' own live `renderer()`, so a pack's cards track whatever Shapes presents.
 

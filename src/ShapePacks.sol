@@ -37,14 +37,14 @@ import {IShapePackRenderer, PackRenderInput} from "./interfaces/IShapePackRender
 ///      - A Shape pushed in by a plain `transferFrom` cannot be refused and is stranded. That is
 ///        accepted: a recovery function would be an administrative path into everyone else's
 ///        packs.
-///      - The admin reaches presentation only (renderer, copy, lock). It has no path into custody.
+///      - The admin reaches presentation only (renderer, preview limit, copy, lock). It has no path into custody.
 contract ShapePacks is ERC721, IShapePacks, IERC2981, IERC721Receiver, ReentrancyGuard {
     /// @notice `shapes_` has no code or does not answer ERC-165 for `IShapes`.
     error UnsupportedShapes(address shapes);
 
     uint256 private constant MAX_NAME_BYTES = 64;
     uint256 private constant MAX_DESCRIPTION_BYTES = 2048;
-    uint256 private constant TOP_CARDS = 12;
+    uint256 private constant DEFAULT_PREVIEW_CARD_LIMIT = 12;
 
     /// @inheritdoc IShapePacks
     // forge-lint: disable-next-line(screaming-snake-case-immutable)
@@ -72,6 +72,8 @@ contract ShapePacks is ERC721, IShapePacks, IERC2981, IERC721Receiver, Reentranc
 
     address private _admin;
     address private _renderer;
+    /// @inheritdoc IShapePacks
+    uint256 public override previewCardLimit;
     bool private _presentationLocked;
     string private _tokenNamePrefix;
     string private _description;
@@ -92,6 +94,7 @@ contract ShapePacks is ERC721, IShapePacks, IERC2981, IERC721Receiver, Reentranc
         MIN_PACK_VALUE = 3 * IShapes(shapes_).unit();
         _renderer = renderer_;
         _admin = admin_;
+        previewCardLimit = DEFAULT_PREVIEW_CARD_LIMIT;
         _tokenNamePrefix = "Shape Pack ";
         _description = "A Shape Pack bundles Shapes into one token. Its value is exactly the sum of the Shapes "
             "inside, which only ever grows while the pack is live. Open it to take the Shapes out, or redeem "
@@ -378,6 +381,14 @@ contract ShapePacks is ERC721, IShapePacks, IERC2981, IERC721Receiver, Reentranc
     }
 
     /// @inheritdoc IShapePacks
+    function setPreviewCardLimit(uint256 newLimit) external onlyAdmin whenUnlocked {
+        if (newLimit == 0) revert InvalidPreviewCardLimit(newLimit);
+        previewCardLimit = newLimit;
+        emit PreviewCardLimitUpdated(newLimit);
+        if (_lastPackId > 0) emit BatchMetadataUpdate(1, _lastPackId);
+    }
+
+    /// @inheritdoc IShapePacks
     /// @dev Stored here and passed to the renderer, so a bad string is refused at write time
     ///      rather than breaking the JSON at read time. Signals marketplaces to re-read.
     function setMetadataCopy(string calldata tokenNamePrefix_, string calldata description_)
@@ -403,8 +414,8 @@ contract ShapePacks is ERC721, IShapePacks, IERC2981, IERC721Receiver, Reentranc
     /* ------------------------------ metadata ------------------------------ */
 
     /// @notice Fully onchain metadata for a live pack, built by the renderer from one struct.
-    /// @dev Reverts for a pack that is not live. Up to twelve Shapes, ranked by backing and then
-    ///      token id, are passed as cards. Contents order is unaffected.
+    /// @dev Reverts for a pack that is not live. Up to `previewCardLimit` Shapes, ranked by
+    ///      backing and then token id, are passed as cards. Contents order is unaffected.
     function tokenURI(uint256 packId) public view override returns (string memory) {
         _requireOwned(packId);
         IShapes s = IShapes(shapes);
@@ -514,14 +525,15 @@ contract ShapePacks is ERC721, IShapePacks, IERC2981, IERC721Receiver, Reentranc
 
     /// @dev Build the full makeup and keep only the highest-backed ids for the image. Packed
     ///      Shapes cannot be Black, so their denomination is their redeemable backing. An
-    ///      insertion into a twelve-element window avoids sorting a potentially unbounded pack.
+    ///      insertion into a preview-sized window avoids sorting the full pack when the selected
+    ///      limit is smaller than its contents.
     function _previewOrder(IShapes s, uint256[] memory ids, uint256[] memory denominations)
         internal
         view
         returns (uint32[] memory counts, uint256[] memory topIds)
     {
         counts = new uint32[](denominations.length);
-        uint256 limit = ids.length < TOP_CARDS ? ids.length : TOP_CARDS;
+        uint256 limit = ids.length < previewCardLimit ? ids.length : previewCardLimit;
         topIds = new uint256[](limit);
         uint256[] memory topValues = new uint256[](limit);
         uint256 filled;

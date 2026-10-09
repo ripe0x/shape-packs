@@ -124,6 +124,9 @@ def record(chain_id, url, shapes_input, admin_input, label=""):
     min_value = call_uint(url, packs, "0xecf0ec2f")  # MIN_PACK_VALUE()
     if min_value != 3 * call_uint(url, shapes, "0x907af6c0"):  # unit()
         raise RuntimeError("MIN_PACK_VALUE mismatch")
+    preview_limit = call_uint(url, packs, "0x6596c6a1")  # previewCardLimit()
+    if preview_limit != 12:
+        raise RuntimeError("previewCardLimit default mismatch")
 
     manifest = {
         "chainId": chain_id,
@@ -132,6 +135,7 @@ def record(chain_id, url, shapes_input, admin_input, label=""):
         "shapePackRenderer": renderer,
         "admin": admin,
         "minPackValueWei": str(min_value),
+        "previewCardLimit": preview_limit,
         "deployer": deployer,
         "blockNumber": max(int(item["blockNumber"], 16) for item in receipts.values()),
     }

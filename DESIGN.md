@@ -11,7 +11,8 @@ how it is created, extended and exited, what the contract may never do, how it r
 repository is laid out, and the decisions that were taken.
 
 Revision 3. The collection and token images use a centred fan; token faces are ranked by backing
-and token id, up to twelve. Revision 2 made packs extendable by their holder; there is no cap on
+and token id. The current renderer draws up to twelve; the collection's admin-set preview limit
+may be higher for future renderers. Revision 2 made packs extendable by their holder; there is no cap on
 pack size, so exit is chunkable; the pack's value is cached; the creator is recorded; the
 `Sealed` trait, `createdAt` and the `IShapePositionResolver` claim are gone; rule order and the
 approval wording are fixed.
@@ -343,11 +344,17 @@ presentation admin, with no authority over custody.
 
 - `admin()`, `transferAdmin`, `renounceAdmin`, with the `IAdminControl` names and errors.
 - `setRenderer(address)` requires code answering ERC-165 for `IShapePackRenderer`.
+- ERC-165 reports both the current `IShapePacks` interface and the earlier deployed interface ID
+  `0xa28b9336`; all functions from the earlier interface remain available.
+- `previewCardLimit()` starts at 12. The admin may set any positive limit with
+  `setPreviewCardLimit(uint256)`. This controls how many highest-backed Shape states the pack
+  passes to its renderer. The current renderer still draws at most twelve; a replacement can use
+  a higher limit without redeploying the pack collection. Changes signal token metadata updates.
 - `setMetadataCopy(tokenNamePrefix, description)` stores the copy on `ShapePacks` itself, bounded
   (64 and 2048 bytes) and checked JSON-safe (printable ASCII, no `"` or `\`), so it cannot break
   the JSON. Shapes' `CopyValidation` is a linked library; the pack uses an internal check with
   the same bounds to avoid a second linked deploy.
-- `lockPresentation()` freezes renderer and copy permanently and emits `PresentationLocked`.
+- `lockPresentation()` freezes renderer, preview limit and copy permanently and emits `PresentationLocked`.
   `setRenderer` and `setMetadataCopy` emit ERC-4906 `BatchMetadataUpdate(1, totalMinted)` and
   ERC-7572 `ContractURIUpdated()` so marketplaces re-read changed metadata.
 
@@ -365,7 +372,7 @@ struct PackRenderInput {
     uint256[] denominations;  // wei per ladder index
     uint256 mintedCount;
     address creator;
-    ShapeState[] topCards;    // up to twelve Shapes, highest redeemable backing first
+    ShapeState[] topCards;    // up to previewCardLimit Shapes, highest redeemable backing first
     string tokenNamePrefix;
     string description;
 }
@@ -385,14 +392,17 @@ Outer pairs extend both fans without shrinking their cards. Beyond the third tie
 fans use the same 180-unit step for each outer pair so twelve faces fit within
 the canvas. In every fan, the centre-to-centre step from the first smaller pair to the third tier
 is 170 canvas units, regardless of card count. The highest-backed
-face is always drawn on top. Equal backing is ordered by ascending token id. Up to twelve real
-Shape faces are drawn. For larger packs, these are the twelve highest-backed Shapes; the full
-count and makeup remain in metadata. This display sort never changes custody or contents order.
+face is always drawn on top. Equal backing is ordered by ascending token id. The current renderer
+draws up to twelve real Shape faces, or fewer if the admin lowers `previewCardLimit`. For larger
+packs, these are the highest-backed Shapes; the full count and makeup remain in metadata. The
+collection has no fixed preview ceiling, so a future renderer can use a higher admin-set limit
+without another collection deployment. This display sort never changes custody or contents order.
 The renderer uses Shapes' live `renderer()`, calling
 `renderSVG` for seed-derived cards and `renderSVGSampled` when `modules` is nonempty. Each face
 keeps its 5:7 aspect ratio and its art is clipped only to its own rounded card. There are no
-plain black backs. The fixed twelve-face ceiling bounds artwork rendering; `tokenURI` still
-copies and scans the full contents list, so its cost grows with pack size.
+plain black backs. The current renderer caps artwork at twelve faces. `tokenURI` still copies and
+scans the full contents list, and ranking cost also grows with the selected preview limit. An
+excessive admin-set limit can make metadata reads too expensive, so test gas before raising it.
 
 **Name and description.** `Shape Pack 12`. Description: the shared editable copy, then the makeup
 in words: `3 x 0.01 ETH, 1 x 0.05 ETH. 0.08 ETH total.`, with an ASCII `x` so the JSON stays
@@ -510,6 +520,7 @@ interface IShapePacks is IERC721, IERC721Value {
     event ShapesClaimed(uint256 indexed packId, address indexed to, uint256[] shapeIds);
     event EthClaimed(uint256 indexed packId, address indexed recipient, uint256[] shapeIds, uint256 valueWei);
     event RendererUpdated(address indexed renderer);
+    event PreviewCardLimitUpdated(uint256 limit);
     event MetadataCopySet(string tokenNamePrefix, string description);
     event PresentationLocked(address indexed renderer);
     event ContractURIUpdated();                         // ERC-7572
@@ -534,6 +545,7 @@ interface IShapePacks is IERC721, IERC721Value {
     error PresentationIsLocked();
     error UnsupportedRenderer(address renderer);
     error InvalidCopy(uint8 field);
+    error InvalidPreviewCardLimit(uint256 limit);
     error AdminUnauthorizedAccount(address account);
     error AdminInvalidAdmin(address admin);
     error SelfCustodyRejected(uint256 packId);
@@ -573,10 +585,12 @@ interface IShapePacks is IERC721, IERC721Value {
     function transferAdmin(address newAdmin) external;
     function renounceAdmin() external;
     function renderer() external view returns (address);
+    function previewCardLimit() external view returns (uint256);
     function presentationLocked() external view returns (bool);
     function tokenNamePrefix() external view returns (string memory);
     function description() external view returns (string memory);
     function setRenderer(address newRenderer) external;
+    function setPreviewCardLimit(uint256 newLimit) external;
     function setMetadataCopy(string calldata tokenNamePrefix_, string calldata description_) external;
     function lockPresentation() external;
     function contractURI() external view returns (string memory);

@@ -20,8 +20,8 @@ struct PackState {
 ///         the Shapes, `redeem` unwraps them to ETH, and `unseal` + `claim`/`claimEth` do the same
 ///         in chunks for packs too large for one block.
 ///
-/// @dev Custody rules follow `ShapeCardEscrow`: Shapes are pulled with `transferFrom` from the
-///      caller only, minted into the contract through a receiver window that admits nothing else,
+/// @dev Shapes are pulled with `transferFrom` from the caller only, minted into the contract
+///      through a receiver window that admits nothing else,
 ///      and pushed out with `transferFrom`. The contract never calls a Shapes mutator other than
 ///      `mintBatchTo` and `redeemBatchTo`, never approves anyone, and has no admin path into
 ///      custody. It does not retain ETH from normal calls; forced ETH can be stranded. The admin
@@ -65,6 +65,7 @@ interface IShapePacks is IERC721, IERC721Value {
     event EthClaimed(uint256 indexed packId, address indexed recipient, uint256[] shapeIds, uint256 valueWei);
 
     event RendererUpdated(address indexed renderer);
+    event PreviewCardLimitUpdated(uint256 limit);
     event MetadataCopySet(string tokenNamePrefix, string description);
     event PresentationLocked(address indexed renderer);
     /// @notice ERC-7572.
@@ -106,6 +107,8 @@ interface IShapePacks is IERC721, IERC721Value {
     error UnsupportedRenderer(address renderer);
     /// @notice A copy field is too long or not JSON-safe. 0 is the name prefix, 1 the description.
     error InvalidCopy(uint8 field);
+    /// @notice A zero preview limit would hide every Shape card.
+    error InvalidPreviewCardLimit(uint256 limit);
     error AdminUnauthorizedAccount(address account);
     error AdminInvalidAdmin(address admin);
     /// @notice A pack token may not be held by this contract: it could never be opened.
@@ -148,7 +151,7 @@ interface IShapePacks is IERC721, IERC721Value {
         returns (uint256 backingWei, uint256 feeWei, uint256 totalWei, uint256 shapeCount);
 
     /// @notice The fewest-Shapes makeup for `backingWei`: largest denomination first, as many as
-    ///         fit, repeat. A prefill for a UI; `createPack` takes whatever makeup the user wants.
+    ///         fit, repeat. `createPack` also accepts other valid makeups.
     function defaultMakeup(uint256 backingWei) external view returns (uint32[] memory mintCounts);
 
     /* -------------------------------- exit -------------------------------- */
@@ -215,23 +218,37 @@ interface IShapePacks is IERC721, IERC721Value {
 
     /* ---------------------------- presentation ---------------------------- */
 
+    /// @notice The presentation admin, or zero after renunciation.
     function admin() external view returns (address);
+    /// @notice Transfers presentation authority to a nonzero address, even after presentation is locked.
     function transferAdmin(address newAdmin) external;
+    /// @notice Permanently removes presentation authority. Callable by the current admin.
     function renounceAdmin() external;
+    /// @notice The renderer used by `tokenURI` and `contractURI`.
     function renderer() external view returns (address);
+    /// @notice Maximum Shape states sent to the renderer for each token image; defaults to 12.
+    function previewCardLimit() external view returns (uint256);
+    /// @notice Whether changes to the renderer, preview limit and copy have been locked.
     function presentationLocked() external view returns (bool);
+    /// @notice The shared name prefix prepended to each pack id in token metadata.
     function tokenNamePrefix() external view returns (string memory);
+    /// @notice The shared description included in token and collection metadata.
     function description() external view returns (string memory);
 
     /// @notice Replaces the renderer. Admin-only until `lockPresentation`.
     function setRenderer(address newRenderer) external;
+
+    /// @notice Sets a positive number of highest-backed Shapes to send to the renderer.
+    /// @dev Admin-only until `lockPresentation`. A renderer may draw fewer cards than requested;
+    ///      large limits can make `tokenURI` expensive for large packs. Signals token metadata changes.
+    function setPreviewCardLimit(uint256 newLimit) external;
 
     /// @notice Replaces the token name prefix (at most 64 bytes) and the shared description (at
     ///         most 2048 bytes). Both must be printable ASCII with no `"` or `\`. Admin-only until
     ///         `lockPresentation`.
     function setMetadataCopy(string calldata tokenNamePrefix_, string calldata description_) external;
 
-    /// @notice Permanently freezes the renderer and the copy. Admin-only.
+    /// @notice Permanently freezes the renderer, preview limit and copy. Admin-only.
     function lockPresentation() external;
 
     /// @notice ERC-7572 collection metadata.

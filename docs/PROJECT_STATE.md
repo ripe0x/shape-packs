@@ -1,12 +1,12 @@
 # Project state
 
-Phase: Sepolia v2 deployed; source verification and legacy renderer update pending
-Branch: primary main for all deployment and verification commands
-Code candidate: 6275bf4 (renderer accepted October 9, 2026); release tools e9ebd1e
+Phase: Admin preview-limit implementation reviewed; merge pending
+Branch: detached implementation worktree; public-chain deployment uses primary main only
+Code candidate: 081c2c5; renderer layout 6275bf4 remains accepted
 Product rules: [DESIGN.md](../DESIGN.md) and [SECURITY.md](../SECURITY.md)
-Launch status: New Sepolia collection deployed; explorer verification and legacy update pending
-Blocker: the original ShapePacks producer caps previews at eleven faces. Its three live packs
-remain in that collection; the new twelve-face collection starts empty.
+Launch status: Sepolia v2 deployed; user reports both contracts source-verified
+Constraint: Deployed collections cannot gain the proposed setter. The original collection caps
+previews at eleven; its three packs remain there. V2 starts empty and defaults to twelve.
 
 The redesign draws up to twelve actual Shape faces on a transparent canvas, ordered by redeemable
 backing with token-id ties. Even packs through twelve use a balanced two-card centre with smaller
@@ -23,8 +23,7 @@ primary main, `DRY_RUN=1 DEPLOYMENT_LABEL=v2 script/deploy.sh sepolia` passed ag
 public RPC with `forge clean` and constructor readback; no transactions were sent. The existing
 manifest and broadcast remained unchanged during rehearsal. The user then deployed v2 from
 primary main. Both receipts succeeded and readbacks match. The exact-input source preflight
-passed for both new creations; Etherscan submission remains with the user. Keep deployment
-source unchanged until that submission succeeds.
+passed for both new creations; the user reports that Etherscan verified both.
 
 V2 `ShapePackRenderer` is at `0x199f7d71d8d56cb721c2a71c68cc34b8f925af9c` (transaction
 `0x8412c3dde9d249ccbd40777ce7d8ab424267d6eed17a277c8b64fcba01c318b5`). V2
@@ -55,6 +54,10 @@ The release workflow now separates broadcasting from source verification. The ve
 both live creation transactions against one full deployment build and submits only Standard JSON
 fields, so neither of the two failed retry paths is used for a future mainnet deployment.
 
-Next: user submits v2 source verification, then signs the original collection's `setRenderer`
-transaction with `ripe0x`. Confirm its receipt and renderer readback. The old collection will
-gain the new layout but will still render at most eleven faces.
+Current change: `ShapePacks` starts with a 12-card preview limit and lets the presentation admin
+set any positive limit until locked. It passes up to that many top-ranked Shape states; the current
+renderer still draws no more than twelve. New setting affects token images only and emits an
+ERC-4906 batch update. Default and testnet suites pass, 226 tests each; release-tool regressions
+pass 10 tests and the deployment script builds. An independent review of 081c2c5 found no blocker;
+the previous ERC-165 interface ID remains supported. The original Sepolia collection still points
+to its old renderer as of the latest live read. Next: merge 1eff6b4 and 081c2c5 into primary main.

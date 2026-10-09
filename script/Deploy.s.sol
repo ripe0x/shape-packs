@@ -71,6 +71,7 @@ contract Deploy is Script {
         require(packs.shapes() == shapes, "packs.shapes mismatch");
         require(packs.renderer() == address(renderer), "packs.renderer mismatch");
         require(packs.admin() == admin, "packs.admin mismatch");
+        require(packs.previewCardLimit() == 12, "packs.previewCardLimit mismatch");
         require(packs.MIN_PACK_VALUE() == 3 * IShapes(shapes).unit(), "MIN_PACK_VALUE mismatch");
         require(renderer.shapes() == shapes, "renderer.shapes mismatch");
         require(packs.supportsInterface(type(IShapePacks).interfaceId), "IShapePacks interface missing");

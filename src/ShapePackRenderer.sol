@@ -18,7 +18,8 @@ import {IShapePackRenderer, PackRenderInput} from "./interfaces/IShapePackRender
 /// @dev View-only logic. Its only immutable configuration is the Shapes address; the renderer is
 ///      read from Shapes on every call, so pack art follows Shapes' art. Each 2000x2800 Shapes
 ///      SVG is fitted without distortion into a portrait card on a 3840 square canvas. Callers
-///      supply JSON-safe copy; `ShapePacks` validates it when it is set.
+///      supply JSON-safe copy. `ShapePacks` validates its stored copy before passing it here;
+///      direct callers are responsible for their own input.
 contract ShapePackRenderer is IShapePackRenderer, IERC165 {
     uint256 private constant CANVAS = 3840;
     uint256 private constant CENTER = CANVAS / 2;
@@ -41,6 +42,8 @@ contract ShapePackRenderer is IShapePackRenderer, IERC165 {
 
     error NotAContract(address target);
 
+    /// @notice Sets the Shapes token whose artwork is used for pack faces.
+    /// @param shapes_ A contract address; an EOA is rejected.
     constructor(address shapes_) {
         if (shapes_.code.length == 0) revert NotAContract(shapes_);
         shapes = shapes_;
@@ -175,7 +178,7 @@ contract ShapePackRenderer is IShapePackRenderer, IERC165 {
 
     /* -------------------------------- images -------------------------------- */
 
-    /// @dev Rank zero is centred except in balanced even fans of up to twelve cards.
+    /// @dev Draws at most twelve supplied faces using the Shapes renderer read on this call.
     function _image(PackRenderInput calldata input) private view returns (string memory) {
         IShapeRenderer renderer = IShapeRenderer(IShapes(shapes).renderer());
         uint256 n = input.topCards.length;
@@ -227,10 +230,9 @@ contract ShapePackRenderer is IShapePackRenderer, IERC165 {
         return string(abi.encodePacked(body, "</svg>"));
     }
 
-    /// @dev The Draw index hero uses 75% inner faces, 58% outer faces and tilts that
-    ///      ease by two degrees per pair. Even fans use a balanced two-card centre;
-    ///      odd fans keep a single front card. Beyond seven, face widths stop
-    ///      shrinking and match the six- or seven-card fan according to parity.
+    /// @dev Odd fans centre the highest-backed face and extend smaller faces in left/right
+    ///      pairs. Inner faces use 75% of the front width; outer faces use 58%. Beyond seven,
+    ///      face widths stop shrinking and added pairs use the same outward step.
     function _slot(uint256 rank, uint256 n) private pure returns (CardSlot memory slot) {
         if (n % 2 == 0) return _evenSlot(rank, n);
 

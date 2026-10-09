@@ -46,6 +46,11 @@ class VerificationInputTest(unittest.TestCase):
         self.assertNotEqual(result.returncode, 0)
         self.assertIn("requires FOUNDRY_PROFILE=default", result.stderr)
 
+    def test_public_deploy_rejects_dirty_main(self):
+        result = self._wrapper_with_stub_git(FAKE_GIT_DIRTY="1")
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("require a clean main checkout", result.stderr)
+
     def test_versioned_record_preserves_original_manifest_name(self):
         self.assertEqual(str(deployment_path(11155111)), "deployments/11155111.json")
         self.assertEqual(str(deployment_path(11155111, "v2")), "deployments/11155111-v2.json")
@@ -86,7 +91,7 @@ class VerificationInputTest(unittest.TestCase):
             bin_dir = root / "bin"
             bin_dir.mkdir()
             stubs = {
-                "git": '#!/bin/sh\nif [ "$1" = branch ]; then echo main; else echo /mock/git; fi\n',
+                "git": '#!/bin/sh\nif [ "$1" = branch ]; then echo main; elif [ "$1" = status ]; then :; else echo /mock/git; fi\n',
                 "cast": "#!/bin/sh\necho 11155111\n",
                 "forge": '#!/bin/sh\nif [ "$1" = script ]; then echo "new broadcast" > broadcast/Deploy.s.sol/11155111/run-latest.json; fi\n',
                 "python3": '#!/bin/sh\ncp broadcast/Deploy.s.sol/11155111/run-latest.json "broadcast/Deploy.s.sol/11155111/snapshot-$6.json"\necho "new manifest" > "deployments/11155111-$6.json"\n',
@@ -138,7 +143,7 @@ class VerificationInputTest(unittest.TestCase):
         with tempfile.TemporaryDirectory() as temp:
             git = pathlib.Path(temp) / "git"
             git.write_text(
-                '#!/bin/sh\nif [ "$1" = branch ]; then echo main; else echo /mock/git; fi\n'
+                '#!/bin/sh\nif [ "$1" = branch ]; then echo main; elif [ "$1" = status ]; then [ "${FAKE_GIT_DIRTY:-0}" = 1 ] && echo " M src/ShapePacks.sol"; else echo /mock/git; fi\n'
             )
             git.chmod(0o755)
             env = dict(os.environ, PATH=f"{temp}:{os.environ['PATH']}", DRY_RUN="1")

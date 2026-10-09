@@ -275,7 +275,8 @@ python3 script/verify_renderer.py sepolia --submit # requires ETHERSCAN_API_KEY
 
 The helper runs `forge clean`, builds `script/Deploy.s.sol` with build info, and checks its complete
 creation bytecode against the live Tenderly transaction before submitting the same
-Standard JSON compiler input to Etherscan. Compiling `ShapePackRenderer.sol` alone produces
+Standard JSON source and settings to Etherscan. Foundry-only path fields are excluded because
+Solidity's Standard JSON API rejects them. Compiling `ShapePackRenderer.sol` alone produces
 different bytecode because its `via_ir` build has a smaller compiler source set. Use `mainnet`
 instead of `sepolia` when verifying a mainnet deployment.
 

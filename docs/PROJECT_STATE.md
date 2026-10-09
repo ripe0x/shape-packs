@@ -21,6 +21,8 @@ The wrapper now records valid onchain state even when the explorer step exits no
 The later standalone `forge verify-contract` attempt also failed: it compiled only the renderer's
 18-source import graph, while the deployment script compiled 47 sources. Rebuilding
 `script/Deploy.s.sol` with build info reproduces the live renderer creation bytecode exactly.
+The first full-input Etherscan attempt returned `Unknown key "allowPaths"`: Foundry's build-info
+input included CLI path fields. The helper now sends only Solidity Standard JSON keys.
 
 Next: run `python3 script/verify_renderer.py sepolia` on the primary `main` checkout, then
 `python3 script/verify_renderer.py sepolia --submit` with `ETHERSCAN_API_KEY` set. Confirm both

@@ -298,8 +298,8 @@ contract MetadataTest is MetadataHelpers {
     function test_TwoShapesUseBalancedPairWithHighestOnTop() public {
         uint256 packId = createFor(alice, noIds(), mintsOf(1, 2));
         string memory svg = svgOfPack(packId);
-        uint256 lowerAt = indexOf(svg, '<g transform="translate(1955,905) rotate(5 725 1015)"');
-        uint256 higherAt = indexOf(svg, '<g transform="translate(435,905) rotate(-5 725 1015)"');
+        uint256 lowerAt = indexOf(svg, '<g transform="translate(1765,905) rotate(5 725 1015)"');
+        uint256 higherAt = indexOf(svg, '<g transform="translate(625,905) rotate(-5 725 1015)"');
         assertTrue(lowerAt != type(uint256).max && higherAt != type(uint256).max, "balanced equal-size cards");
         assertLt(lowerAt, higherAt, "higher-ranked Shape is drawn on top");
         assertEq(_drawnCards(svg), 2);
@@ -313,6 +313,15 @@ contract MetadataTest is MetadataHelpers {
         assertEq(countOf(svg, "<svg"), 7, "outer canvas plus three slots and art");
         assertTrue(contains(svg, '<g transform="translate(2280,1360) rotate(9 600 840)"'), "next rank right");
         assertTrue(contains(svg, '<g transform="translate(360,1360) rotate(-11 600 840)"'), "third rank left");
+    }
+
+    function test_FiveShapesUseTighterCentres() public {
+        uint256 packId = createFor(alice, noIds(), mintsOf(0, 5));
+        string memory svg = svgOfPack(packId);
+        assertTrue(contains(svg, '<g transform="translate(1968,1467) rotate(9 485 679)"'), "inner right");
+        assertTrue(contains(svg, '<g transform="translate(902,1467) rotate(-11 485 679)"'), "inner left");
+        assertTrue(contains(svg, '<g transform="translate(2612,1775) rotate(7 375 525)"'), "outer right");
+        assertTrue(contains(svg, '<g transform="translate(478,1775) rotate(-9 375 525)"'), "outer left");
     }
 
     function test_TopCardCapTenShapes() public {

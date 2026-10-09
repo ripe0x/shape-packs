@@ -372,10 +372,12 @@ struct PackRenderInput {
 ```
 
 **Image.** A centred fan on a square canvas, following the Draw Shapes index hero carousel's
-size steps and easing tilt. Horizontal spacing tightens as pairs are added so all eleven
-faces fit. With at least three Shapes, the highest-backed Shape is the front centre card; the
+size steps and easing tilt. The three-Shape fan keeps the hero spacing; four or more Shapes
+use 75% of the initial preview's centre spacing, so all eleven faces fit. With at least three
+Shapes, the highest-backed Shape is the front centre card; the
 rest alternate right, left, then outward in pairs. A two-Shape pack shows two equally sized
-cards side by side, with the higher-backed card drawn on top. Equal backing is ordered by
+cards side by side with centres 1,140 canvas units apart, 25% closer than the initial preview.
+The higher-backed card is drawn on top. Equal backing is ordered by
 ascending token id. Up to eleven real Shape faces are drawn; if a pack is larger, these are its
 eleven highest-backed Shapes and the full count and makeup remain in metadata. This display sort never
 changes custody or contents order. The renderer uses Shapes' live `renderer()`, calling

@@ -224,13 +224,13 @@ contract ShapePackRenderer is IShapePackRenderer, IERC165 {
     }
 
     /// @dev The Draw index hero uses 75% inner faces, 58% outer faces and tilts that
-    ///      ease by two degrees per pair. Compress centre spacing as pairs are added
-    ///      so eleven faces remain visible within the square canvas.
+    ///      ease by two degrees per pair. Keep three-card spacing; compress centres
+    ///      by 25% for larger fans so eleven faces remain visible in the square.
     function _slot(uint256 rank, uint256 n) private pure returns (CardSlot memory slot) {
         if (n == 2) {
             slot.width = 1450;
             slot.height = slot.width * 7 / 5;
-            slot.x = rank == 0 ? CENTER - 760 - slot.width / 2 : CENTER + 760 - slot.width / 2;
+            slot.x = rank == 0 ? CENTER - 570 - slot.width / 2 : CENTER + 570 - slot.width / 2;
             slot.y = (CANVAS - slot.height) / 2;
             slot.angle = rank == 0 ? "-5" : "5";
             return slot;
@@ -253,7 +253,7 @@ contract ShapePackRenderer is IShapePackRenderer, IERC165 {
         uint256 pair = (rank + 1) / 2;
         slot.width = frontWidth * (pair == 1 ? 75 : 58) / 100;
         slot.height = slot.width * 7 / 5;
-        uint256 offset = pair * frontWidth * stepPercent / 100;
+        uint256 offset = pair * frontWidth * stepPercent * (pairs == 1 ? 4 : 3) / 400;
         bool right = rank % 2 == 1;
         slot.x = right ? CENTER + offset - slot.width / 2 : CENTER - offset - slot.width / 2;
         slot.y = baseline - slot.height;

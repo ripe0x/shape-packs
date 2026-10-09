@@ -1,10 +1,10 @@
 # Project state
 
-Phase: Sepolia deployed; renderer source verification pending
+Phase: Sepolia deployed; both contracts source verified
 Branch: main (primary checkout)
 Code candidate: f09773dc75f572708899ef3b6b3fcad06ec005f1
 Product rules: [DESIGN.md](../DESIGN.md) and [SECURITY.md](../SECURITY.md)
-Launch status: Sepolia contracts live; explorer verification incomplete
+Launch status: Sepolia contracts live and source verified; mainnet not deployed
 
 On October 9, 2026, both creation receipts succeeded. `ShapePackRenderer` is at
 `0xd9ff1d1b7dd7b26a7b52c5f7f8abad7d216ceeb4` (transaction
@@ -15,15 +15,12 @@ Tenderly live reads confirm code at both addresses, the expected Shapes and rend
 the `ripe0x` deployer as presentation admin, and a `300000000000000` wei minimum pack value.
 The verified onchain manifest is `deployments/11155111.json`.
 
-Etherscan shows an exact source match for `ShapePacks`; `ShapePackRenderer` still needs source
-verification. Forge's one-of-two verification failure happened after both contracts deployed.
-The wrapper now records valid onchain state even when the explorer step exits nonzero.
-The later standalone `forge verify-contract` attempt also failed: it compiled only the renderer's
-18-source import graph, while the deployment script compiled 47 sources. Rebuilding
-`script/Deploy.s.sol` with build info reproduces the live renderer creation bytecode exactly.
-The first full-input Etherscan attempt returned `Unknown key "allowPaths"`: Foundry's build-info
-input included CLI path fields. The helper now sends only Solidity Standard JSON keys.
+Etherscan now shows an exact source match for both `ShapePacks` and `ShapePackRenderer`.
+Forge's original one-of-two verification failure happened after both contracts deployed.
+The standalone retry compiled only the renderer's 18-source import graph, while the deployment
+script compiled 47 sources, so its bytecode differed. A full-input submission then failed because
+Foundry's build info included the CLI-only `allowPaths` field. The corrected helper sent the full
+source set with only Solidity Standard JSON keys; both public Etherscan code pages now show an
+exact match. The wrapper records valid onchain state even when explorer verification exits nonzero.
 
-Next: run `python3 script/verify_renderer.py sepolia` on the primary `main` checkout, then
-`python3 script/verify_renderer.py sepolia --submit` with `ETHERSCAN_API_KEY` set. Confirm both
-Etherscan pages show verified source. Do not broadcast the deployment script again.
+Next: run Sepolia post-deployment smoke checks before considering mainnet. Do not redeploy Sepolia.

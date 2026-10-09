@@ -23,6 +23,7 @@ contract ShapePackRenderer is IShapePackRenderer, IERC165 {
     uint256 private constant CANVAS = 3840;
     uint256 private constant CENTER = CANVAS / 2;
     uint256 private constant MAX_CARDS = 11;
+    uint256 private constant THIRD_TIER_STEP = 170;
 
     struct CardSlot {
         uint256 x;
@@ -225,7 +226,7 @@ contract ShapePackRenderer is IShapePackRenderer, IERC165 {
 
     /// @dev The Draw index hero uses 75% inner faces, 58% outer faces and tilts that
     ///      ease by two degrees per pair. Even fans through eight use a scaled two-card
-    ///      centre; other fans keep their existing centre and spacing.
+    ///      centre; other fans keep a single front card and their first side step.
     function _slot(uint256 rank, uint256 n) private pure returns (CardSlot memory slot) {
         if (n <= 8 && n % 2 == 0) return _evenSlot(rank, n);
 
@@ -248,7 +249,7 @@ contract ShapePackRenderer is IShapePackRenderer, IERC165 {
         slot.height = slot.width * 7 / 5;
         uint256 firstStep = frontWidth * stepPercent * (pairs == 1 ? 4 : 3) / 400;
         uint256 offset = firstStep;
-        if (pair > 1) offset += firstStep * 9 / 16;
+        if (pair > 1) offset += THIRD_TIER_STEP;
         if (pair > 2) offset += (pair - 2) * firstStep;
         bool right = rank % 2 == 1;
         slot.x = right ? CENTER + offset - slot.width / 2 : CENTER - offset - slot.width / 2;
@@ -257,8 +258,8 @@ contract ShapePackRenderer is IShapePackRenderer, IERC165 {
     }
 
     /// @dev Keep the two-card pair's width-to-spacing ratio at every even size. The
-    ///      first outer pair stays put; the gap into tier three uses 56.25% of that
-    ///      step, then later gaps retain their previous spacing.
+    ///      first outer pair stays put; the gap into tier three is fixed across
+    ///      pack sizes, then later gaps retain their previous spacing.
     function _evenSlot(uint256 rank, uint256 n) private pure returns (CardSlot memory slot) {
         uint256 pairs = n / 2;
         uint256 frontWidth =
@@ -273,7 +274,7 @@ contract ShapePackRenderer is IShapePackRenderer, IERC165 {
         uint256 offset = frontWidth * 570 / 1450;
         if (pair != 0) {
             offset += outerStep;
-            if (pair > 1) offset += outerStep * 9 / 16;
+            if (pair > 1) offset += THIRD_TIER_STEP;
             if (pair > 2) offset += (pair - 2) * (outerStep * 3 / 4);
         }
         slot.x = right ? CENTER + offset - slot.width / 2 : CENTER - offset - slot.width / 2;

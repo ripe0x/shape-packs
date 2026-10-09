@@ -378,12 +378,12 @@ faces fill matched left and right outer positions. The pair and its spacing scal
 more faces are added. The first smaller pair sits 41.25% of the front-card width beyond the
 centre pair. Three Shapes keep the hero spacing. Odd counts from five onward and counts of ten
 or more use 75% of the initial preview's first centre step, with the highest-backed Shape
-centred in front and the rest alternating right and left. In every fan, the gap into the third
-tier is 56.25% of its first side step. Farther tiers shift inward with it while retaining their
-spacing from each other. The highest-backed face is always
-drawn on top. Equal backing is ordered by ascending token id. Up to eleven real Shape faces are
-drawn; if a pack is larger, these are its eleven highest-backed Shapes and the full count and
-makeup remain in metadata. This display sort never changes custody or contents order. The renderer
+centred in front and the rest alternating right and left. In every fan, the centre-to-centre step
+from the first smaller pair to the third tier is 170 canvas units, regardless of card count.
+Farther tiers shift with it while retaining their spacing from each other. The highest-backed
+face is always drawn on top. Equal backing is ordered by ascending token id. Up to eleven real
+Shape faces are drawn. For larger packs, these are the eleven highest-backed Shapes; the full
+count and makeup remain in metadata. This display sort never changes custody or contents order. The renderer
 uses Shapes' live `renderer()`, calling
 `renderSVG` for seed-derived cards and `renderSVGSampled` when `modules` is nonempty. Each face
 keeps its 5:7 aspect ratio and its art is clipped only to its own rounded card. There are no

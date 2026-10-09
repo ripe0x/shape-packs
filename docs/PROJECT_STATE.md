@@ -12,8 +12,9 @@ faces distributed in matched left and right pairs. Odd counts and counts of ten 
 a single highest-value
 face centred in front, using the Draw Shapes hero's size and tilt steps. Three Shapes retain the
 hero spacing. In every fan, the primary tier and first smaller tier stay in place; the gap to
-the third tier uses 56.25% of the first side step. Farther tiers shift inward with it while
-retaining their previous gaps. This applies to every count that has a third tier.
+the third tier is a fixed 170 canvas units beyond the first smaller tier at every count.
+Farther tiers shift with it while retaining their previous gaps. This applies to every count
+that has a third tier.
 The contractURI uses the same layout with three illustrative faces. Rendered
 1- through 12-Shape examples are in `preview/fan-contact-sheet.png` (ignored, local review
 artifact). The user requested visual confirmation before the layout is final. Default and testnet

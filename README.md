@@ -13,9 +13,10 @@ spot, or both, at whatever makeup you choose. It has five properties.
 - **Exact value.** A pack's value is the sum of its Shapes' redeemable backing. It is cached at
   creation, increased on every addition, and asserted equal to the live sum by the invariant suite.
   It never decreases: no one can redeem, split, compose or blacken a packed Shape.
-- **Minimum 0.03 ETH at creation**, written `3 * shapes.unit()`, so the same build is correct on
-  Sepolia's 1/100 ladder. 0.03 is not a denomination, so the smallest packs are three 0.01 Shapes,
-  one 0.05, or 0.01 + 0.05, and so on. Additions have no minimum.
+- **Minimum `3 * shapes.unit()` at creation:** 0.03 ETH on mainnet and 0.0003 ETH on Sepolia's
+  1/100 ladder. Neither minimum is a denomination; the smallest packs are three unit Shapes or
+  one Shape at the next denomination (0.05 ETH on mainnet, 0.0005 ETH on Sepolia). Additions have
+  no minimum.
 - **No cap on size.** A pack may hold as many Shapes as its creator will pay gas for, across as many
   transactions as they like. Exit is chunkable, so no pack can outgrow its own exit.
 - **Two exits, all-or-nothing at the token level.** `open` burns the pack and hands the Shapes

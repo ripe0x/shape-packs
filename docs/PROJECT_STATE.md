@@ -1,8 +1,8 @@
 # Project state
 
-Phase: Renderer accepted; Sepolia release preparation
-Branch: detached implementation worktree; deployment remains restricted to primary main
-Code candidate: 6275bf4 (accepted October 9, 2026)
+Phase: Sepolia release gate; awaiting rollout choice and user-operated broadcast
+Branch: primary main for all deployment and verification commands
+Code candidate: 6275bf4 (renderer accepted October 9, 2026); release tools e9ebd1e
 Product rules: [DESIGN.md](../DESIGN.md) and [SECURITY.md](../SECURITY.md)
 Launch status: Existing Sepolia contracts remain live; replacement contracts are not deployed
 Blocker: the live ShapePacks producer caps the preview at eleven faces, so a renderer-only
@@ -17,8 +17,12 @@ third tier is 180 canvas units in both layouts. The gap into the third tier
 stays fixed at 170 canvas units. Packs over twelve show their top twelve cards.
 The contractURI uses the same layout with three illustrative faces. Rendered
 1- through 12-Shape examples are in `preview/fan-contact-sheet.png` (ignored, local review
-artifact). The user accepted the layout for release. Default and testnet
-Foundry suites pass, 223 tests each; deployment and live RPC checks remain pending.
+artifact). The user accepted the layout for release. Default and testnet Foundry suites pass,
+223 tests each. The release tool passed nine focused tests and independent review. From clean
+primary main, `DRY_RUN=1 DEPLOYMENT_LABEL=v2 script/deploy.sh sepolia` passed against Tenderly's
+public RPC with `forge clean` and constructor readback; no transactions were sent. The existing
+manifest and broadcast remain unchanged. A v2 broadcast must be followed by receipt/readback
+inspection and exact-input source verification before further Solidity changes.
 
 On October 9, 2026, both creation receipts succeeded. `ShapePackRenderer` is at
 `0xd9ff1d1b7dd7b26a7b52c5f7f8abad7d216ceeb4` (transaction
@@ -41,4 +45,5 @@ both live creation transactions against one full deployment build and submits on
 fields, so neither of the two failed retry paths is used for a future mainnet deployment.
 
 Next: resolve whether Sepolia gets a new collection, an update to the old collection, or both;
-then prepare a clean-main release rehearsal and commands for the user to execute.
+then give the user the signer-owned deployment and metadata-update commands. A new collection
+is required for twelve faces; the old collection can render at most eleven.

@@ -1,12 +1,13 @@
 # Project state
 
-Phase: Admin preview-limit implementation merged; pre-deployment rehearsal pending
+Phase: Sepolia v3 deployed; source verification pending
 Branch: primary main; public-chain deployment uses the clean primary checkout only
 Code candidate: 081c2c5, merged by 7c28c22; renderer layout 6275bf4 remains accepted
 Product rules: [DESIGN.md](../DESIGN.md) and [SECURITY.md](../SECURITY.md)
-Launch status: Sepolia v2 deployed; user reports both contracts source-verified
-Constraint: Deployed collections cannot gain the proposed setter. The original collection caps
-previews at eleven; its three packs remain there. V2 starts empty and defaults to twelve.
+Launch status: Sepolia v3 receipts and constructor readbacks verified; source submission pending
+Constraint: Earlier deployed collections cannot gain the preview-limit setter. The original
+collection caps previews at eleven; its three packs remain there. V2 defaults to twelve. V3
+starts at twelve and its presentation admin can set any positive preview limit until locked.
 
 The redesign draws up to twelve actual Shape faces on a transparent canvas, ordered by redeemable
 backing with token-id ties. Even packs through twelve use a balanced two-card centre with smaller
@@ -61,5 +62,14 @@ ERC-4906 batch update. Default and testnet suites pass, 226 tests each; release-
 pass 10 tests and the deployment script builds. An independent review of 081c2c5 found no blocker;
 the previous ERC-165 interface ID remains supported. Deployment and preview script NatSpec was
 updated in e6317d4 and both scripts compile. The original Sepolia collection still points to its
-old renderer as of the latest live read. Next: rehearse the next Sepolia deployment from clean
-primary main against Tenderly's public RPC before giving the user broadcast commands.
+old renderer as of the latest live read. V3 was deployed from primary main at 716ac02.
+The v3 manifest is `deployments/11155111-v3.json`; both creation receipts succeeded at blocks
+11880346 and 11880347. Renderer `0xfef50a388bde6b222c6f5fecafe590bf561c8bda` was created
+in transaction `0xe31e48575f931c3310a39f8008a1dabc49d28c977f0a68fc8ff4a677da0da219`;
+ShapePacks `0xd1cfc13abcbb370d381ac192aeb6f2e1b414022a` was created in transaction
+`0xe5fa5ee833c0628ae797ed4fee42525425b4255c1deae3410a269bffe453d40d`. Tenderly
+live reads confirm code, creation inputs, Shapes and renderer links, admin/deployer, minimum
+value, and the default preview limit of 12. The read-only source preflight matched both complete
+creation inputs against the same 47-source Solidity Standard JSON payload, with no CLI-only
+`allowPaths` field. Next: user submits this checked payload to Etherscan, then confirm both source
+verification statuses. Do not rebroadcast to remedy an explorer error.

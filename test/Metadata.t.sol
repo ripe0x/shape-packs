@@ -295,12 +295,24 @@ contract MetadataTest is MetadataHelpers {
         assertEq(countOf(svg, "<svg"), 3, "outer canvas, slot, and Shape art");
     }
 
+    function test_TwoShapesUseBalancedPairWithHighestOnTop() public {
+        uint256 packId = createFor(alice, noIds(), mintsOf(1, 2));
+        string memory svg = svgOfPack(packId);
+        uint256 lowerAt = indexOf(svg, '<g transform="translate(1955,905) rotate(5 725 1015)"');
+        uint256 higherAt = indexOf(svg, '<g transform="translate(435,905) rotate(-5 725 1015)"');
+        assertTrue(lowerAt != type(uint256).max && higherAt != type(uint256).max, "balanced equal-size cards");
+        assertLt(lowerAt, higherAt, "higher-ranked Shape is drawn on top");
+        assertEq(_drawnCards(svg), 2);
+    }
+
     function test_TopCardCapThreeShapes() public {
         uint256 packId = createFor(alice, noIds(), mintsOf(0, 3));
         string memory svg = svgOfPack(packId);
         assertEq(_drawnCards(svg), 3, "three cards drawn");
         assertEq(countOf(svg, '<clipPath id="c'), 3, "three clip paths");
         assertEq(countOf(svg, "<svg"), 7, "outer canvas plus three slots and art");
+        assertTrue(contains(svg, '<g transform="translate(2280,1360) rotate(9 600 840)"'), "next rank right");
+        assertTrue(contains(svg, '<g transform="translate(360,1360) rotate(-11 600 840)"'), "third rank left");
     }
 
     function test_TopCardCapTenShapes() public {

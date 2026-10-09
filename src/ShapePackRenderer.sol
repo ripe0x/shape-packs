@@ -171,7 +171,7 @@ contract ShapePackRenderer is IShapePackRenderer, IERC165 {
 
     /* -------------------------------- images -------------------------------- */
 
-    /// @dev Rank zero is the centred front card; each following pair goes left and right.
+    /// @dev Rank zero is the centred front card, except for the balanced two-card layout.
     function _image(PackRenderInput calldata input) private view returns (string memory) {
         IShapeRenderer renderer = IShapeRenderer(IShapes(shapes).renderer());
         uint256 n = input.topCards.length;
@@ -208,8 +208,7 @@ contract ShapePackRenderer is IShapePackRenderer, IERC165 {
         return renderer.renderSVG(state.seed, state.faceValueWei, state.isBlack, state.inkGene);
     }
 
-    /// @dev Draw lower-value cards first. Only the centre face covers the inner edge of both
-    ///      sides; each outward pair exposes part of its own Shapes artwork.
+    /// @dev Draw lower-value cards first, so the highest-backed face always sits on top.
     function _stack(string[] memory cards) private pure returns (string memory) {
         uint256 n = cards.length;
         if (n > MAX_CARDS) n = MAX_CARDS;
@@ -224,11 +223,23 @@ contract ShapePackRenderer is IShapePackRenderer, IERC165 {
         return string(abi.encodePacked(body, "</svg>"));
     }
 
-    /// @dev The front face shrinks as pairs are added so eleven cards fit inside the square.
-    ///      Side cards keep their bottoms aligned and rotate outwards, like the Draw frontend.
+    /// @dev The Draw index hero uses 75% inner faces, 58% outer faces and tilts that
+    ///      ease by two degrees per pair. Compress centre spacing as pairs are added
+    ///      so eleven faces remain visible within the square canvas.
     function _slot(uint256 rank, uint256 n) private pure returns (CardSlot memory slot) {
+        if (n == 2) {
+            slot.width = 1450;
+            slot.height = slot.width * 7 / 5;
+            slot.x = rank == 0 ? CENTER - 760 - slot.width / 2 : CENTER + 760 - slot.width / 2;
+            slot.y = (CANVAS - slot.height) / 2;
+            slot.angle = rank == 0 ? "-5" : "5";
+            return slot;
+        }
+
         uint256 pairs = n / 2;
-        uint256 frontWidth = 1600 - (pairs == 0 ? 0 : (pairs - 1) * 150);
+        uint256 stepPercent = 65 - pairs * 5;
+        uint256 frontWidth = pairs == 0 ? 1600 : (CANVAS - 240) * 100 / (pairs * stepPercent * 2 + 58);
+        if (frontWidth > 1600) frontWidth = 1600;
         uint256 frontHeight = frontWidth * 7 / 5;
         uint256 baseline = (CANVAS + frontHeight) / 2;
         if (rank == 0) {
@@ -240,14 +251,13 @@ contract ShapePackRenderer is IShapePackRenderer, IERC165 {
             return slot;
         }
         uint256 pair = (rank + 1) / 2;
-        slot.width = frontWidth * (80 + (pairs - 1) * 3) / 100;
+        slot.width = frontWidth * (pair == 1 ? 75 : 58) / 100;
         slot.height = slot.width * 7 / 5;
-        uint256 step = (CENTER - slot.width / 2 - 180) / pairs;
-        uint256 offset = pair * step;
-        slot.x = rank % 2 == 1 ? CENTER - offset - slot.width / 2 : CENTER + offset - slot.width / 2;
+        uint256 offset = pair * frontWidth * stepPercent / 100;
+        bool right = rank % 2 == 1;
+        slot.x = right ? CENTER + offset - slot.width / 2 : CENTER - offset - slot.width / 2;
         slot.y = baseline - slot.height;
-        uint256 tilt = 11 - pair * 2;
-        slot.angle = rank % 2 == 1 ? _neg(tilt) : FixedPoint.toString(tilt);
+        slot.angle = right ? FixedPoint.toString(11 - pair * 2) : _neg(13 - pair * 2);
     }
 
     /// @dev Canvas, white ground, shadow and local rounded clip paths for each Shape SVG.

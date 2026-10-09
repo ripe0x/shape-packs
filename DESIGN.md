@@ -371,11 +371,13 @@ struct PackRenderInput {
 }
 ```
 
-**Image.** A centred fan on a square canvas, following the Draw Shapes frontend's card-fan
-proportions. The highest-backed Shape is the front centre card. The next highest go to the
-nearest left and right slots, then outward in pairs. Equal backing is ordered by ascending token
-id. Up to eleven real Shape faces are drawn; if a pack is larger, these are its eleven
-highest-backed Shapes and the full count and makeup remain in metadata. This display sort never
+**Image.** A centred fan on a square canvas, following the Draw Shapes index hero carousel's
+size steps and easing tilt. Horizontal spacing tightens as pairs are added so all eleven
+faces fit. With at least three Shapes, the highest-backed Shape is the front centre card; the
+rest alternate right, left, then outward in pairs. A two-Shape pack shows two equally sized
+cards side by side, with the higher-backed card drawn on top. Equal backing is ordered by
+ascending token id. Up to eleven real Shape faces are drawn; if a pack is larger, these are its
+eleven highest-backed Shapes and the full count and makeup remain in metadata. This display sort never
 changes custody or contents order. The renderer uses Shapes' live `renderer()`, calling
 `renderSVG` for seed-derived cards and `renderSVGSampled` when `modules` is nonempty. Each face
 keeps its 5:7 aspect ratio and its art is clipped only to its own rounded card. There are no

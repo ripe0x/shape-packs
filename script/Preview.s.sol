@@ -28,7 +28,7 @@ contract Preview is Script {
         ShapePacks packs = new ShapePacks(address(shapes), address(renderer), USER);
 
         uint256[] memory none;
-        uint32[8] memory sizes = [uint32(1), 2, 3, 5, 7, 10, 11, 12];
+        uint32[12] memory sizes = [uint32(1), 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12];
         for (uint256 i = 0; i < sizes.length; ++i) {
             uint32 n = sizes[i];
             uint32[] memory counts = new uint32[](shapes.denominationCount());

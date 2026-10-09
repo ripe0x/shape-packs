@@ -18,6 +18,8 @@ limit. Tenderly estimated 13,874,050 gas for the same creation. Candidate `fe86f
 Sepolia gas multiplier, waits for each creation to succeed, and writes a manifest only after live
 receipt and constructor-state checks. Its focused tests and `forge build` pass. The earlier full
 default and testnet suites each passed 216 tests with no failures; runtime contract code is unchanged.
+Tenderly's live Sepolia RPC simulated the renderer creation at 20M gas and the packs creation at
+39M gas with the renderer supplied as a read-only state override; both returned runtime code.
 
 Next: the operator runs a dry run, then broadcasts from the primary `main` checkout using
 Tenderly's public Sepolia RPC and the `ripe0x` keystore. Check the new manifest and onchain state

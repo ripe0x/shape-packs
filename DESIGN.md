@@ -344,6 +344,8 @@ presentation admin, with no authority over custody.
 
 - `admin()`, `transferAdmin`, `renounceAdmin`, with the `IAdminControl` names and errors.
 - `setRenderer(address)` requires code answering ERC-165 for `IShapePackRenderer`.
+- ERC-165 reports both the current `IShapePacks` interface and the earlier deployed interface ID
+  `0xa28b9336`; all functions from the earlier interface remain available.
 - `previewCardLimit()` starts at 12. The admin may set any positive limit with
   `setPreviewCardLimit(uint256)`. This controls how many highest-backed Shape states the pack
   passes to its renderer. The current renderer still draws at most twelve; a replacement can use

@@ -3,8 +3,7 @@ pragma solidity 0.8.28;
 
 import {ShapeState} from "shapes/ShapeTypes.sol";
 
-/// @notice Everything the renderer needs to draw and describe one pack. Assembled by
-///         `ShapePacks` from its own storage and from Shapes; the renderer does not query pack state.
+/// @notice The pack data passed to a renderer by `ShapePacks`, assembled from its storage and Shapes.
 struct PackRenderInput {
     uint256 packId;
     uint256 shapeCount;
@@ -14,17 +13,16 @@ struct PackRenderInput {
     uint256[] denominations; // wei per ladder index, same length
     uint256 mintedCount; // Shapes the pack minted itself; shapeCount - mintedCount were pulled
     address creator;
-    ShapeState[] topCards; // up to twelve Shapes, highest redeemable backing first
+    ShapeState[] topCards; // up to the admin-set preview limit, highest backing first
     string tokenNamePrefix;
     string description;
 }
 
 /// @title IShapePackRenderer
 /// @notice Presentation for Shape Packs: the stack image, the metadata JSON, and the
-///         collection-level metadata. Everything is generated at call time; nothing is stored.
-/// @dev Card artwork is drawn through the Shapes renderer read live from `IShapes(shapes).renderer()`,
-///      so pack art tracks whatever renderer Shapes presents. The renderer never writes state and
-///      has no authority over anything.
+///         collection-level metadata.
+/// @dev Rendering methods are views. The current implementation reads the Shapes renderer live,
+///      so card art follows the onchain Shapes renderer.
 interface IShapePackRenderer {
     /// @notice The Shapes token whose renderer draws the cards.
     function shapes() external view returns (address);
@@ -35,7 +33,7 @@ interface IShapePackRenderer {
     /// @notice The raw metadata JSON for one pack.
     function metadataJSON(PackRenderInput calldata input) external view returns (string memory);
 
-    /// @notice The raw SVG for one pack: a stack of cards, top cards drawn, the rest as backs.
+    /// @notice The raw SVG for one pack. The current renderer draws up to twelve supplied faces.
     function image(PackRenderInput calldata input) external view returns (string memory);
 
     /// @notice `data:application/json;base64,...` for the collection.

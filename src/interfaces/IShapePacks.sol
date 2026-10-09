@@ -20,8 +20,8 @@ struct PackState {
 ///         the Shapes, `redeem` unwraps them to ETH, and `unseal` + `claim`/`claimEth` do the same
 ///         in chunks for packs too large for one block.
 ///
-/// @dev Custody rules follow `ShapeCardEscrow`: Shapes are pulled with `transferFrom` from the
-///      caller only, minted into the contract through a receiver window that admits nothing else,
+/// @dev Shapes are pulled with `transferFrom` from the caller only, minted into the contract
+///      through a receiver window that admits nothing else,
 ///      and pushed out with `transferFrom`. The contract never calls a Shapes mutator other than
 ///      `mintBatchTo` and `redeemBatchTo`, never approves anyone, and has no admin path into
 ///      custody. It does not retain ETH from normal calls; forced ETH can be stranded. The admin
@@ -151,7 +151,7 @@ interface IShapePacks is IERC721, IERC721Value {
         returns (uint256 backingWei, uint256 feeWei, uint256 totalWei, uint256 shapeCount);
 
     /// @notice The fewest-Shapes makeup for `backingWei`: largest denomination first, as many as
-    ///         fit, repeat. A prefill for a UI; `createPack` takes whatever makeup the user wants.
+    ///         fit, repeat. `createPack` also accepts other valid makeups.
     function defaultMakeup(uint256 backingWei) external view returns (uint32[] memory mintCounts);
 
     /* -------------------------------- exit -------------------------------- */
@@ -218,14 +218,21 @@ interface IShapePacks is IERC721, IERC721Value {
 
     /* ---------------------------- presentation ---------------------------- */
 
+    /// @notice The presentation admin, or zero after renunciation.
     function admin() external view returns (address);
+    /// @notice Transfers presentation authority to a nonzero address, even after presentation is locked.
     function transferAdmin(address newAdmin) external;
+    /// @notice Permanently removes presentation authority. Callable by the current admin.
     function renounceAdmin() external;
+    /// @notice The renderer used by `tokenURI` and `contractURI`.
     function renderer() external view returns (address);
     /// @notice Maximum Shape states sent to the renderer for each token image; defaults to 12.
     function previewCardLimit() external view returns (uint256);
+    /// @notice Whether changes to the renderer, preview limit and copy have been locked.
     function presentationLocked() external view returns (bool);
+    /// @notice The shared name prefix prepended to each pack id in token metadata.
     function tokenNamePrefix() external view returns (string memory);
+    /// @notice The shared description included in token and collection metadata.
     function description() external view returns (string memory);
 
     /// @notice Replaces the renderer. Admin-only until `lockPresentation`.

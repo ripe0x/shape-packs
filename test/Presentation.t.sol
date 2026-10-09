@@ -177,6 +177,7 @@ contract PresentationTest is MetadataHelpers {
         assertTrue(packs.supportsInterface(bytes4(0x49064906)), "ERC-4906");
         assertTrue(packs.supportsInterface(type(IERC721Value).interfaceId));
         assertTrue(packs.supportsInterface(type(IShapePacks).interfaceId));
+        assertTrue(packs.supportsInterface(0xa28b9336), "previous pack interface");
         assertFalse(packs.supportsInterface(0xffffffff));
         assertFalse(packs.supportsInterface(0x12345678));
         assertFalse(packs.supportsInterface(type(IShapePackRenderer).interfaceId));
@@ -754,6 +755,8 @@ contract PresentationTest is MetadataHelpers {
         vm.expectRevert(IShapePacks.PresentationIsLocked.selector);
         packs.setMetadataCopy("x", "y");
         vm.expectRevert(IShapePacks.PresentationIsLocked.selector);
+        packs.setPreviewCardLimit(5);
+        vm.expectRevert(IShapePacks.PresentationIsLocked.selector);
         packs.lockPresentation();
         vm.stopPrank();
 
@@ -795,6 +798,9 @@ contract PresentationTest is MetadataHelpers {
         vm.expectRevert(_unauthorized(bob));
         vm.prank(bob);
         packs.setMetadataCopy("x", "y");
+        vm.expectRevert(_unauthorized(bob));
+        vm.prank(bob);
+        packs.setPreviewCardLimit(5);
         vm.expectRevert(_unauthorized(bob));
         vm.prank(bob);
         packs.lockPresentation();

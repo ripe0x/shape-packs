@@ -175,11 +175,13 @@ struct PackState {
 
 Pack ids start at 1 and are never reissued, so `packOf(shapeId) == 0` means "not packed". That is
 the hook a site or indexer uses to say "this Shape is inside Pack #N". `tokenURI(packId)` is a
-fully onchain `data:` URI: a fan of up to twelve real Shape faces on a transparent canvas, with
-highest redeemable backing in front and equal-value ties broken by token id. Even packs through
-twelve Shapes show a balanced centre pair, with smaller faces distributed on both sides.
-Packs with more than twelve Shapes show their twelve highest-backed Shapes; the full makeup
-remains in the description and attributes. Display order does not change contents or custody.
+fully onchain `data:` URI: the current renderer draws up to twelve real Shape faces on a transparent
+canvas, with highest redeemable backing in front and equal-value ties broken by token id. Even
+fans show a balanced centre pair, with smaller faces distributed on both sides. `ShapePacks`
+passes up to its admin-set `previewCardLimit()` highest-backed Shapes to the renderer (default 12);
+a future renderer can use more than twelve. The current renderer still draws at most twelve.
+The full makeup remains in the description and attributes. Display order does not change
+contents or custody.
 
 ## Trust model
 
@@ -195,9 +197,10 @@ is in [SECURITY.md](SECURITY.md); in short, the contract never:
   contract itself is performing; a `safeTransferFrom` into it reverts `UnsolicitedToken`;
 - exposes any administrative path into custody. There is no pause, recovery, upgrade or allowlist.
 
-An `admin()` exists, and reaches presentation only: it can replace the renderer, edit the name prefix
-and description (bounded, JSON-safe), and permanently `lockPresentation()`. It cannot touch a Shape,
-a pack, ETH, or who may exit. Hold it in a multisig until the art is final, then lock it.
+An `admin()` exists, and reaches presentation only: it can replace the renderer, set a positive
+preview-card limit, edit the name prefix and description (bounded, JSON-safe), and permanently
+`lockPresentation()`. It cannot touch a Shape, a pack, ETH, or who may exit. A large preview limit
+can make metadata reads expensive. Hold the admin in a multisig until the art is final, then lock it.
 
 Two things worth knowing before you use it. A Shape sent into the contract by plain `transferFrom`
 (not through `createPack`) is stranded; see SECURITY.md. And exit cost scales with pack size;
@@ -259,18 +262,20 @@ throwaway local Shapes. Decode the base64 JSON and its `image` field to get the 
 ## Deploying
 
 ```sh
+forge clean
 script/deploy.sh <anvil|sepolia|mainnet>
 ```
 
 `script/deploy.sh` sources `script/env/<target>.env` (values only, no secrets), checks the RPC chain,
 runs `forge clean`, then runs `forge script script/Deploy.s.sol --broadcast --slow`. Source
 verification is a separate step after receipts and live constructor state have been recorded.
-Run public-chain targets from the primary checkout on `main`; the wrapper refuses linked worktrees
-and other branches.
+Run public-chain targets from the clean primary checkout on `main`; the wrapper refuses linked
+worktrees, dirty checkouts and other branches.
 The wrapper pins Tenderly's public RPC and Foundry's `default` profile on public chains so the
 later source-verification build uses the same inputs.
-The wrapper refuses to overwrite an existing deployment manifest or start a new broadcast while
-an earlier `run-latest.json` still needs reconciliation.
+The wrapper refuses to overwrite an existing deployment manifest. For a deliberate new generation,
+set `DEPLOYMENT_LABEL` (for example `v3`); it archives the prior broadcast and records an immutable
+snapshot for later verification. An interrupted attempt must be reconciled before another broadcast.
 
 After a public-chain deployment, verify both contracts without broadcasting:
 
@@ -278,6 +283,8 @@ After a public-chain deployment, verify both contracts without broadcasting:
 python3 script/verify_renderer.py sepolia          # read-only preflight for both contracts
 python3 script/verify_renderer.py sepolia --submit # requires ETHERSCAN_API_KEY
 ```
+
+For a labelled deployment, add `--label <label>` to both verification commands.
 
 The helper runs `forge clean`, builds `script/Deploy.s.sol` with build info, and checks each
 contract's complete creation bytecode against its live Tenderly transaction before submitting
@@ -299,6 +306,7 @@ sequentially so a failed renderer creation cannot be followed by a packs creatio
 | `PRIVATE_KEY` | Signer for `sepolia` and `mainnet`... |
 | `KEYSTORE_ACCOUNT` | ...or the name of a foundry keystore under `~/.foundry/keystores` (password prompt, or `KEYSTORE_PASSWORD_FILE`). |
 | `ETHERSCAN_API_KEY` | Separate source-verification step on `sepolia` and `mainnet`. |
+| `DEPLOYMENT_LABEL` | New deployment generation, such as `v3`; preserves the previous record and broadcast. |
 | `DRY_RUN=1` | Simulate only: no `--broadcast`, nothing written. |
 | `CONFIRM_MAINNET=yes` | Required to run `mainnet` at all, dry run included. |
 
@@ -317,14 +325,16 @@ deploys `ShapePackRenderer(shapes)`, then `ShapePacks(shapes, renderer, admin)`,
 and requires:
 
 - `packs.shapes() == SHAPES`, `packs.renderer() == renderer`, `packs.admin() == admin`
+- `packs.previewCardLimit() == 12`
 - `packs.MIN_PACK_VALUE() == 3 * IShapes(SHAPES).unit()`
 - `renderer.shapes() == SHAPES`
 - `packs.supportsInterface(type(IShapePacks).interfaceId)`
 
 After a broadcast, the wrapper checks both receipts and live constructor state through the RPC.
-Only then does it write `deployments/<chainId>.json` with `chainId`, `shapes`,
-`shapePacks`, `shapePackRenderer`, `admin`, `minPackValueWei` (a decimal string), `deployer` and
-`blockNumber` (the latest deployment block). If Forge exits nonzero after both contracts deploy,
+Only then does it write `deployments/<chainId>[-<label>].json` with `chainId`, `shapes`,
+`shapePacks`, `shapePackRenderer`, `admin`, `minPackValueWei` (a decimal string),
+`previewCardLimit`, `deployer` and `blockNumber` (the latest deployment block).
+If Forge exits nonzero after both contracts deploy,
 the wrapper still records their verified onchain state, then exits nonzero for investigation.
 Inspect receipts before any retry. Presentation is left
 unlocked at launch, as Shapes' was; lock it once the art is final.

@@ -18,10 +18,9 @@ import {IShapePacks, PackState} from "./interfaces/IShapePacks.sol";
 import {IShapePackRenderer, PackRenderInput} from "./interfaces/IShapePackRenderer.sol";
 
 /// @title ShapePacks
-/// @notice Bundles of Shapes as one ERC-721. See `IShapePacks` for the surface and
-///         DESIGN.md for the specification.
+/// @notice Bundles live Shapes in an ERC-721 that its owner can open or redeem.
 ///
-/// @dev Custody rules, which follow `ShapeCardEscrow`:
+/// @dev Custody rules:
 ///      - Shapes enter a pack in two ways only. They are pulled with
 ///        `transferFrom(msg.sender, this, id)`, so an approval granted to this contract can only be
 ///        exercised by the approver's own call; or they are minted here by `Shapes.mintBatchTo`,
@@ -45,6 +44,8 @@ contract ShapePacks is ERC721, IShapePacks, IERC2981, IERC721Receiver, Reentranc
     uint256 private constant MAX_NAME_BYTES = 64;
     uint256 private constant MAX_DESCRIPTION_BYTES = 2048;
     uint256 private constant DEFAULT_PREVIEW_CARD_LIMIT = 12;
+    /// @dev Earlier deployed `IShapePacks` ID; its functions remain callable.
+    bytes4 private constant PREVIOUS_PACKS_INTERFACE_ID = 0xa28b9336;
 
     /// @inheritdoc IShapePacks
     // forge-lint: disable-next-line(screaming-snake-case-immutable)
@@ -78,6 +79,7 @@ contract ShapePacks is ERC721, IShapePacks, IERC2981, IERC721Receiver, Reentranc
     string private _tokenNamePrefix;
     string private _description;
 
+    /// @notice Deploys a pack collection against an existing Shapes token and renderer.
     /// @param shapes_ The Shapes token to wrap. Must answer ERC-165 for `IShapes`.
     /// @param renderer_ The initial renderer. Must answer ERC-165 for `IShapePackRenderer`.
     /// @param admin_ The presentation admin. Nonzero.
@@ -182,7 +184,7 @@ contract ShapePacks is ERC721, IShapePacks, IERC2981, IERC721Receiver, Reentranc
     }
 
     /// @inheritdoc IShapePacks
-    /// @dev Plain `transferFrom` is used, as in the escrow: `to` is chosen by the owner, and a
+    /// @dev Plain `transferFrom` is used: `to` is chosen by the owner, and a
     ///      hook-less push cannot be griefed by a recipient.
     function openTo(uint256 packId, address to) external nonReentrant {
         _unseal(packId, to);
@@ -289,7 +291,7 @@ contract ShapePacks is ERC721, IShapePacks, IERC2981, IERC721Receiver, Reentranc
     }
 
     /// @notice EIP-2981 royalty, permanently zero.
-    /// @dev Declared so a marketplace reading ERC-2981 gets an explicit zero rate, as Shapes does.
+    /// @dev Marketplaces reading ERC-2981 receive an explicit zero rate.
     function royaltyInfo(uint256, uint256) external pure returns (address, uint256) {
         return (address(0), 0);
     }
@@ -313,6 +315,7 @@ contract ShapePacks is ERC721, IShapePacks, IERC2981, IERC721Receiver, Reentranc
         revert DirectDepositRejected();
     }
 
+    /// @dev Rejects unsupported calls, including calls that try to send ETH.
     fallback() external payable {
         revert DirectDepositRejected();
     }
@@ -324,11 +327,13 @@ contract ShapePacks is ERC721, IShapePacks, IERC2981, IERC721Receiver, Reentranc
         return _admin;
     }
 
+    /// @dev Restricts presentation writes to the current admin.
     modifier onlyAdmin() {
         _requireAdmin();
         _;
     }
 
+    /// @dev Stops presentation writes after the one-way lock.
     modifier whenUnlocked() {
         _requireUnlocked();
         _;
@@ -458,9 +463,12 @@ contract ShapePacks is ERC721, IShapePacks, IERC2981, IERC721Receiver, Reentranc
 
     /* -------------------------------- ERC-165 ------------------------------- */
 
+    /// @notice Reports the current and previous pack interfaces, plus the supported token standards.
+    /// @dev All functions in the previous interface remain implemented after adding the preview setter.
     function supportsInterface(bytes4 interfaceId) public view override(ERC721, IERC165) returns (bool) {
-        return interfaceId == type(IShapePacks).interfaceId || interfaceId == type(IERC721Value).interfaceId
-            || interfaceId == type(IERC2981).interfaceId || interfaceId == bytes4(0x49064906) // ERC-4906 metadata update
+        return interfaceId == type(IShapePacks).interfaceId || interfaceId == PREVIOUS_PACKS_INTERFACE_ID
+            || interfaceId == type(IERC721Value).interfaceId || interfaceId == type(IERC2981).interfaceId
+            || interfaceId == bytes4(0x49064906) // ERC-4906 metadata update
             || super.supportsInterface(interfaceId);
     }
 
@@ -475,14 +483,17 @@ contract ShapePacks is ERC721, IShapePacks, IERC2981, IERC721Receiver, Reentranc
         return super._update(to, tokenId, auth);
     }
 
+    /// @dev The role check used by presentation writes and admin transfer.
     function _requireAdmin() internal view {
         if (msg.sender != _admin) revert AdminUnauthorizedAccount(msg.sender);
     }
 
+    /// @dev The lock check shared by renderer, preview-limit and copy updates.
     function _requireUnlocked() internal view {
         if (_presentationLocked) revert PresentationIsLocked();
     }
 
+    /// @dev Approvals do not grant authority to change a pack's contents or exit it.
     function _requireOwner(uint256 packId) internal view {
         if (_ownerOf(packId) != msg.sender) revert NotPackOwner(packId, msg.sender);
     }
@@ -494,6 +505,7 @@ contract ShapePacks is ERC721, IShapePacks, IERC2981, IERC721Receiver, Reentranc
         if (c != msg.sender) revert NotClaimant(packId, msg.sender);
     }
 
+    /// @dev ERC-165 rejects an EOA or wrong interface, but cannot prove rendering will succeed.
     function _requireRenderer(address r) internal view {
         if (!ERC165Checker.supportsInterface(r, type(IShapePackRenderer).interfaceId)) {
             revert UnsupportedRenderer(r);
@@ -510,11 +522,13 @@ contract ShapePacks is ERC721, IShapePacks, IERC2981, IERC721Receiver, Reentranc
         }
     }
 
+    /// @dev Notifies indexers about every minted pack id and the collection metadata.
     function _signalMetadataChanged() internal {
         if (_lastPackId > 0) emit BatchMetadataUpdate(1, _lastPackId);
         emit ContractURIUpdated();
     }
 
+    /// @dev Counts stored Shapes by their live denomination, without reordering pack contents.
     function _makeup(uint256[] memory ids) internal view returns (uint32[] memory counts) {
         IShapes s = IShapes(shapes);
         counts = new uint32[](s.denominationCount());
@@ -561,6 +575,8 @@ contract ShapePacks is ERC721, IShapePacks, IERC2981, IERC721Receiver, Reentranc
         }
     }
 
+    /// @dev Records custody and value before minting the pack token, so receiver callbacks see
+    ///      a complete pack. A failed intake or receiver call reverts all prior state changes.
     function _create(uint256[] calldata shapeIds, uint32[] calldata mintCounts, address to)
         internal
         returns (uint256 packId)
@@ -577,7 +593,7 @@ contract ShapePacks is ERC721, IShapePacks, IERC2981, IERC721Receiver, Reentranc
         _safeMint(to, packId);
     }
 
-    /// @dev Shared by creation and addition. Checks in the order of the design (length, at least
+    /// @dev Shared by creation and addition. Checks in order (length, at least
     ///      one Shape, exact payment), pulls the caller's Shapes, then mints the rest into this
     ///      contract. The mint fee is read once, so the payment check and every mint use the same
     ///      value. A pulled Shape's backing is read live; a minted Shape's backing is the amount
@@ -700,6 +716,7 @@ contract ShapePacks is ERC721, IShapePacks, IERC2981, IERC721Receiver, Reentranc
         if (n == len) delete _claimant[packId];
     }
 
+    /// @dev Pops the claimed Shapes before transferring them to the chosen recipient.
     function _claim(uint256 packId, uint256 maxCount, address to) internal {
         uint256[] memory ids = _pop(packId, maxCount);
         for (uint256 i = 0; i < ids.length; ++i) {
@@ -708,6 +725,7 @@ contract ShapePacks is ERC721, IShapePacks, IERC2981, IERC721Receiver, Reentranc
         emit ShapesClaimed(packId, to, ids);
     }
 
+    /// @dev Pops the claimed Shapes before Shapes burns them and pays the recipient directly.
     function _claimEth(uint256 packId, uint256 maxCount, address payable recipient) internal {
         if (recipient == address(0)) revert InvalidRecipient(address(0));
         uint256[] memory ids = _pop(packId, maxCount);
@@ -717,6 +735,7 @@ contract ShapePacks is ERC721, IShapePacks, IERC2981, IERC721Receiver, Reentranc
         emit EthClaimed(packId, recipient, ids, value);
     }
 
+    /// @dev Burns the owner's pack, then redeems its full remaining contents in one call.
     function _redeem(uint256 packId, address payable recipient) internal {
         _unseal(packId, msg.sender);
         _claimEth(packId, type(uint256).max, recipient);

@@ -300,11 +300,12 @@ and requires:
 - `renderer.shapes() == SHAPES`
 - `packs.supportsInterface(type(IShapePacks).interfaceId)`
 
-After a successful broadcast and verification, the wrapper checks both receipts and live constructor
-state through the RPC. Only then does it write `deployments/<chainId>.json` with `chainId`, `shapes`,
+After a broadcast, the wrapper checks both receipts and live constructor state through the RPC.
+Only then does it write `deployments/<chainId>.json` with `chainId`, `shapes`,
 `shapePacks`, `shapePackRenderer`, `admin`, `minPackValueWei` (a decimal string), `deployer` and
-`blockNumber` (the latest deployment block). If a run fails, inspect its broadcast receipts before
-retrying; a verification error can occur after contracts were deployed. Presentation is left
+`blockNumber` (the latest deployment block). If Forge exits nonzero after both contracts deploy,
+the wrapper still records their verified onchain state, then exits nonzero so source verification
+can be finished separately. Inspect receipts before any retry. Presentation is left
 unlocked at launch, as Shapes' was; lock it once the art is final.
 
 ## License

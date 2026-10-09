@@ -111,20 +111,25 @@ fi
 # Compile every attempt, including dry runs, from a clean Foundry cache.
 forge clean
 echo "target=$TARGET chain=$CHAIN_ID profile=$FOUNDRY_PROFILE shapes=$SHAPES admin=${ADMIN:-<broadcaster>}"
-if ! forge script "${ARGS[@]}"; then
-  if [ "$DRY_RUN" != "1" ]; then
-    echo "broadcast may have sent transactions; inspect receipts before retrying" >&2
-  fi
+FORGE_STATUS=0
+forge script "${ARGS[@]}" || FORGE_STATUS=$?
+
+if [ "$DRY_RUN" = "1" ]; then
+  exit "$FORGE_STATUS"
+fi
+
+if [ ! -e "broadcast/Deploy.s.sol/${CHAIN_ID}/run-latest.json" ] \
+  || ! python3 script/record_deployment.py "$CHAIN_ID" "$RPC_URL" "$SHAPES" "${ADMIN:-}"; then
+  echo "broadcast may have sent transactions; inspect receipts before retrying" >&2
   exit 1
 fi
 
-if [ "$DRY_RUN" != "1" ]; then
-  if ! python3 script/record_deployment.py "$CHAIN_ID" "$RPC_URL" "$SHAPES" "${ADMIN:-}"; then
-    echo "broadcast may have succeeded; reconcile receipts before retrying" >&2
-    exit 1
-  fi
-  echo
-  echo "deployments/${CHAIN_ID}.json:"
-  cat "deployments/${CHAIN_ID}.json"
-  echo
+echo
+echo "deployments/${CHAIN_ID}.json:"
+cat "deployments/${CHAIN_ID}.json"
+echo
+
+if [ "$FORGE_STATUS" -ne 0 ]; then
+  echo "both contracts deployed, but Forge exited nonzero; inspect source verification before retrying" >&2
+  exit "$FORGE_STATUS"
 fi

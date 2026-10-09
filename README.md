@@ -266,6 +266,19 @@ from the primary checkout on `main`; the wrapper refuses linked worktrees and ot
 The wrapper refuses to overwrite an existing deployment manifest or start a new broadcast while
 an earlier `run-latest.json` still needs reconciliation.
 
+If a deployment succeeds but Etherscan rejects `ShapePackRenderer`, verify it without broadcasting:
+
+```sh
+python3 script/verify_renderer.py sepolia          # read-only preflight
+python3 script/verify_renderer.py sepolia --submit # requires ETHERSCAN_API_KEY
+```
+
+The helper runs `forge clean`, builds `script/Deploy.s.sol` with build info, and checks its complete
+creation bytecode against the live Tenderly transaction before submitting the same
+Standard JSON compiler input to Etherscan. Compiling `ShapePackRenderer.sol` alone produces
+different bytecode because its `via_ir` build has a smaller compiler source set. Use `mainnet`
+instead of `sepolia` when verifying a mainnet deployment.
+
 Sepolia has Glamsterdam's higher code-deposit cost. The env file sets a 1000% gas-estimate
 multiplier because this Foundry build simulates Cancun costs. The transactions are sent
 sequentially so a failed renderer creation cannot be followed by a packs creation.

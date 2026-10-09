@@ -1,26 +1,23 @@
 # Project state
 
-Phase: Sepolia deployment retry
+Phase: Sepolia deployed; renderer source verification pending
 Branch: main (primary checkout)
-Code candidate: fe86f51d9816ac0cfe71396d4fca1b07049e5735
+Code candidate: f09773dc75f572708899ef3b6b3fcad06ec005f1
 Product rules: [DESIGN.md](../DESIGN.md) and [SECURITY.md](../SECURITY.md)
-Launch status: not deployed
+Launch status: Sepolia contracts live; explorer verification incomplete
 
-The October 9, 2026 Sepolia attempt sent two transactions. Both receipts have status `0x0`:
-renderer `0xcbe7439bf8778061ce95655a999147a726761f001cb45caf3f822f6abcd936ac`
-and packs `0xe13c233398df4b01f919d3a80a3cd3173a979ac3cac2c16df0d3ea0148558bbb`.
-Neither predicted address has code. The timestamped Foundry broadcast artifact remains in the
-primary checkout; its duplicate `run-latest.json` and the invalid manifest were removed after
-checking the receipts.
+On October 9, 2026, both creation receipts succeeded. `ShapePackRenderer` is at
+`0xd9ff1d1b7dd7b26a7b52c5f7f8abad7d216ceeb4` (transaction
+`0x9d0eb80f63333eb903725131c8c7530669ba6b20652c2f87e8d1d39721845395`).
+`ShapePacks` is at `0x5ee5186c1f66b03ba1d675ac60668e168f5306d8` (transaction
+`0xfbf7851f0383fde16f0bd5ab596542cb424a8a3299da2d6f2551949d6c1479f1`).
+Tenderly live reads confirm code at both addresses, the expected Shapes and renderer links,
+the `ripe0x` deployer as presentation admin, and a `300000000000000` wei minimum pack value.
+The verified onchain manifest is `deployments/11155111.json`.
 
-Sepolia's Glamsterdam code-deposit repricing caused the renderer to exhaust its 2,537,746 gas
-limit. Tenderly estimated 13,874,050 gas for the same creation. Candidate `fe86f51` raises the
-Sepolia gas multiplier, waits for each creation to succeed, and writes a manifest only after live
-receipt and constructor-state checks. Its focused tests and `forge build` pass. The earlier full
-default and testnet suites each passed 216 tests with no failures; runtime contract code is unchanged.
-Tenderly's live Sepolia RPC simulated the renderer creation at 20M gas and the packs creation at
-39M gas with the renderer supplied as a read-only state override; both returned runtime code.
+Etherscan shows an exact source match for `ShapePacks`; `ShapePackRenderer` still needs source
+verification. Forge's one-of-two verification failure happened after both contracts deployed.
+The wrapper now records valid onchain state even when the explorer step exits nonzero.
 
-Next: the operator runs a dry run, then broadcasts from the primary `main` checkout using
-Tenderly's public Sepolia RPC and the `ripe0x` keystore. Check the new manifest and onchain state
-before treating Sepolia as deployed.
+Next: verify `ShapePackRenderer` alone on Etherscan from the primary `main` checkout, then
+confirm both pages show verified source. Do not broadcast the deployment script again.

@@ -260,25 +260,29 @@ script/deploy.sh <anvil|sepolia|mainnet>
 ```
 
 `script/deploy.sh` sources `script/env/<target>.env` (values only, no secrets), checks the RPC chain,
-runs `forge clean`, then runs `forge script script/Deploy.s.sol --broadcast --slow`. For `sepolia`
-and `mainnet` it adds `--verify` and requires `ETHERSCAN_API_KEY`. Run these public-chain targets
-from the primary checkout on `main`; the wrapper refuses linked worktrees and other branches.
+runs `forge clean`, then runs `forge script script/Deploy.s.sol --broadcast --slow`. Source
+verification is a separate step after receipts and live constructor state have been recorded.
+Run public-chain targets from the primary checkout on `main`; the wrapper refuses linked worktrees
+and other branches.
+The wrapper pins Tenderly's public RPC and Foundry's `default` profile on public chains so the
+later source-verification build uses the same inputs.
 The wrapper refuses to overwrite an existing deployment manifest or start a new broadcast while
 an earlier `run-latest.json` still needs reconciliation.
 
-If a deployment succeeds but Etherscan rejects `ShapePackRenderer`, verify it without broadcasting:
+After a public-chain deployment, verify both contracts without broadcasting:
 
 ```sh
-python3 script/verify_renderer.py sepolia          # read-only preflight
+python3 script/verify_renderer.py sepolia          # read-only preflight for both contracts
 python3 script/verify_renderer.py sepolia --submit # requires ETHERSCAN_API_KEY
 ```
 
-The helper runs `forge clean`, builds `script/Deploy.s.sol` with build info, and checks its complete
-creation bytecode against the live Tenderly transaction before submitting the same
-Standard JSON source and settings to Etherscan. Foundry-only path fields are excluded because
-Solidity's Standard JSON API rejects them. Compiling `ShapePackRenderer.sol` alone produces
-different bytecode because its `via_ir` build has a smaller compiler source set. Use `mainnet`
-instead of `sepolia` when verifying a mainnet deployment.
+The helper runs `forge clean`, builds `script/Deploy.s.sol` with build info, and checks each
+contract's complete creation bytecode against its live Tenderly transaction before submitting
+the same Standard JSON source and settings to Etherscan. It permits only Solidity's three
+Standard JSON input keys; Foundry-only path fields caused an earlier verification failure.
+Compiling `ShapePackRenderer.sol` alone also produces different bytecode because its `via_ir`
+build has a smaller compiler source set. Use `mainnet` instead of `sepolia` when verifying a
+mainnet deployment. A successful broadcast is not a completed source-verification gate.
 
 Sepolia has Glamsterdam's higher code-deposit cost. The env file sets a 1000% gas-estimate
 multiplier because this Foundry build simulates Cancun costs. The transactions are sent
@@ -291,7 +295,7 @@ sequentially so a failed renderer creation cannot be followed by a packs creatio
 | `ADMIN` | Presentation admin. Defaults to the broadcaster when empty. |
 | `PRIVATE_KEY` | Signer for `sepolia` and `mainnet`... |
 | `KEYSTORE_ACCOUNT` | ...or the name of a foundry keystore under `~/.foundry/keystores` (password prompt, or `KEYSTORE_PASSWORD_FILE`). |
-| `ETHERSCAN_API_KEY` | Verification, `sepolia` and `mainnet`. |
+| `ETHERSCAN_API_KEY` | Separate source-verification step on `sepolia` and `mainnet`. |
 | `DRY_RUN=1` | Simulate only: no `--broadcast`, nothing written. |
 | `CONFIRM_MAINNET=yes` | Required to run `mainnet` at all, dry run included. |
 
@@ -318,8 +322,8 @@ After a broadcast, the wrapper checks both receipts and live constructor state t
 Only then does it write `deployments/<chainId>.json` with `chainId`, `shapes`,
 `shapePacks`, `shapePackRenderer`, `admin`, `minPackValueWei` (a decimal string), `deployer` and
 `blockNumber` (the latest deployment block). If Forge exits nonzero after both contracts deploy,
-the wrapper still records their verified onchain state, then exits nonzero so source verification
-can be finished separately. Inspect receipts before any retry. Presentation is left
+the wrapper still records their verified onchain state, then exits nonzero for investigation.
+Inspect receipts before any retry. Presentation is left
 unlocked at launch, as Shapes' was; lock it once the art is final.
 
 ## License

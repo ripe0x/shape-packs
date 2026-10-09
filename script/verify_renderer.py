@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Verify a live renderer using the deployment script's full compiler input."""
+"""Verify both live contracts using the deployment script's full compiler input."""
 
 import argparse
 import json
@@ -21,8 +21,11 @@ TARGETS = {
     "mainnet": (1, "https://gateway.tenderly.co/public/mainnet"),
 }
 API_URL = "https://api.etherscan.io/v2/api"
-CONTRACT_PATH = "src/ShapePackRenderer.sol"
-CONTRACT_NAME = "ShapePackRenderer"
+CONTRACTS = (
+    ("ShapePackRenderer", "src/ShapePackRenderer.sol", "shapePackRenderer", ("shapes",)),
+    ("ShapePacks", "src/ShapePacks.sol", "shapePacks", ("shapes", "shapePackRenderer", "admin")),
+)
+STANDARD_JSON_KEYS = ("language", "sources", "settings")
 
 
 def git(*args):
@@ -52,32 +55,30 @@ def etherscan(chain_id, key, action, fields):
         raise RuntimeError("could not reach Etherscan") from None
 
 
+def standard_json_source(build_input):
+    # Foundry build info also carries CLI path options; those are not Standard JSON keys.
+    compiler_input = {key: build_input[key] for key in STANDARD_JSON_KEYS}
+    if compiler_input["language"] != "Solidity" or not compiler_input["sources"] or not all(
+        set(source) == {"content"} for source in compiler_input["sources"].values()
+    ):
+        raise RuntimeError("compiler input is not self-contained Solidity Standard JSON")
+    return json.dumps(compiler_input, separators=(",", ":"))
+
+
 def prepare(chain_id, rpc_url):
     manifest = json.loads((ROOT / f"deployments/{chain_id}.json").read_text())
     if manifest["chainId"] != chain_id:
         raise RuntimeError("deployment manifest has the wrong chain")
-    renderer = address(manifest["shapePackRenderer"])
     broadcast = json.loads((ROOT / f"broadcast/Deploy.s.sol/{chain_id}/run-latest.json").read_text())
-    candidates = [t for t in broadcast["transactions"] if t["contractName"] == CONTRACT_NAME]
-    if len(candidates) != 1:
-        raise RuntimeError("broadcast must contain one renderer creation")
-    creation = candidates[0]
-    if address(creation["contractAddress"]) != renderer or creation["transactionType"] != "CREATE":
-        raise RuntimeError("renderer creation does not match the manifest")
+    transactions = broadcast["transactions"]
+    if len(transactions) != len(CONTRACTS) or {t["contractName"] for t in transactions} != {
+        name for name, _, _, _ in CONTRACTS
+    }:
+        raise RuntimeError("broadcast does not contain exactly the expected creations")
+    by_name = {t["contractName"]: t for t in transactions}
 
     if int(rpc(rpc_url, "eth_chainId", []), 16) != chain_id:
         raise RuntimeError("Tenderly RPC reports the wrong chain")
-    transaction = rpc(rpc_url, "eth_getTransactionByHash", [creation["hash"]])
-    receipt = rpc(rpc_url, "eth_getTransactionReceipt", [creation["hash"]])
-    if not transaction or not receipt or int(receipt["status"], 16) != 1:
-        raise RuntimeError("renderer creation is missing or failed onchain")
-    if address(receipt["contractAddress"]) != renderer or transaction["to"] is not None:
-        raise RuntimeError("onchain renderer creation does not match the manifest")
-    creation_input = transaction["input"].lower()
-    if creation_input != creation["transaction"]["input"].lower():
-        raise RuntimeError("onchain creation input differs from the broadcast")
-    if rpc(rpc_url, "eth_getCode", [renderer, "latest"]) == "0x":
-        raise RuntimeError("renderer has no live code")
 
     env = dict(os.environ, FOUNDRY_PROFILE="default")
     subprocess.run(["forge", "clean"], cwd=ROOT, env=env, check=True)
@@ -87,38 +88,54 @@ def prepare(chain_id, rpc_url):
         env=env,
         check=True,
     )
-    matches = []
+    builds = []
     for path in (ROOT / "out/build-info").glob("*.json"):
-        build = json.loads(path.read_text())
-        contract = build.get("output", {}).get("contracts", {}).get(CONTRACT_PATH, {}).get(CONTRACT_NAME)
-        if contract:
-            matches.append((build, contract))
-    if len(matches) != 1:
-        raise RuntimeError("expected one renderer build-info record")
-    build, contract = matches[0]
-    bytecode = contract["evm"]["bytecode"]["object"].lower().removeprefix("0x")
-    expected_args = manifest["shapes"].lower().removeprefix("0x").rjust(64, "0")
-    if creation_input != "0x" + bytecode + expected_args:
-        raise RuntimeError("full build does not exactly match the onchain creation input")
-    compiler = json.loads(contract["metadata"])["compiler"]["version"]
-    if compiler != "0.8.28+commit.7893614a":
-        raise RuntimeError(f"unexpected compiler version: {compiler}")
-    # Foundry build info also carries CLI path options. Solc's Standard JSON API rejects them.
-    compiler_input = {key: build["input"][key] for key in ("language", "sources", "settings")}
-    source = json.dumps(compiler_input, separators=(",", ":"))
-    print(f"Matched live renderer creation at {renderer} ({len(bytecode) // 2} bytecode bytes).")
-    return renderer, expected_args, compiler, source
+        builds.append(json.loads(path.read_text()))
+    if len(builds) != 1:
+        raise RuntimeError("expected one deployment build-info record")
+    build = builds[0]
+    source = standard_json_source(build["input"])
+
+    prepared = []
+    for name, path, manifest_key, argument_keys in CONTRACTS:
+        creation = by_name[name]
+        target = address(manifest[manifest_key])
+        if address(creation["contractAddress"]) != target or creation["transactionType"] != "CREATE":
+            raise RuntimeError(f"{name} creation does not match the manifest")
+        transaction = rpc(rpc_url, "eth_getTransactionByHash", [creation["hash"]])
+        receipt = rpc(rpc_url, "eth_getTransactionReceipt", [creation["hash"]])
+        if not transaction or not receipt or int(receipt["status"], 16) != 1:
+            raise RuntimeError(f"{name} creation is missing or failed onchain")
+        if address(receipt["contractAddress"]) != target or transaction["to"] is not None:
+            raise RuntimeError(f"onchain {name} creation does not match the manifest")
+        creation_input = transaction["input"].lower()
+        if creation_input != creation["transaction"]["input"].lower():
+            raise RuntimeError(f"onchain {name} creation input differs from the broadcast")
+        if rpc(rpc_url, "eth_getCode", [target, "latest"]) == "0x":
+            raise RuntimeError(f"{name} has no live code")
+
+        contract = build["output"]["contracts"][path][name]
+        bytecode = contract["evm"]["bytecode"]["object"].lower().removeprefix("0x")
+        constructor_args = "".join(address(manifest[key])[2:].rjust(64, "0") for key in argument_keys)
+        if creation_input != "0x" + bytecode + constructor_args:
+            raise RuntimeError(f"full build does not exactly match the onchain {name} creation")
+        compiler = json.loads(contract["metadata"])["compiler"]["version"]
+        if compiler != "0.8.28+commit.7893614a":
+            raise RuntimeError(f"unexpected {name} compiler version: {compiler}")
+        print(f"Matched live {name} creation at {target} ({len(bytecode) // 2} bytecode bytes).")
+        prepared.append((name, path, target, constructor_args, compiler, source))
+    return prepared
 
 
-def submit(chain_id, renderer, constructor_args, compiler, source, key):
+def submit(chain_id, name, path, target, constructor_args, compiler, source, key):
     response = etherscan(
         chain_id,
         key,
         "verifysourcecode",
         {
-            "contractaddress": renderer,
+            "contractaddress": target,
             "sourceCode": source,
-            "contractname": f"{CONTRACT_PATH}:{CONTRACT_NAME}",
+            "contractname": f"{path}:{name}",
             "compilerversion": f"v{compiler}",
             "codeformat": "solidity-standard-json-input",
             "constructorArguments": constructor_args,
@@ -126,14 +143,17 @@ def submit(chain_id, renderer, constructor_args, compiler, source, key):
         },
     )
     if response.get("status") != "1":
+        if "already verified" in str(response.get("result", "")).lower():
+            print(f"Etherscan: {name} already verified")
+            return
         raise RuntimeError(f"Etherscan rejected submission: {response.get('result')}")
     guid = response["result"]
-    print(f"Etherscan submission GUID: {guid}")
+    print(f"{name} Etherscan submission GUID: {guid}")
     for _ in range(20):
         time.sleep(5)
         result = etherscan(chain_id, key, "checkverifystatus", {"guid": guid})
         if result.get("status") == "1":
-            print(f"Etherscan: {result.get('result')}")
+            print(f"Etherscan {name}: {result.get('result')}")
             return
         if "pending" not in str(result.get("result", "")).lower():
             raise RuntimeError(f"Etherscan verification failed: {result.get('result')}")
@@ -147,19 +167,20 @@ def main():
     args = parser.parse_args()
     require_primary_main()
     chain_id, rpc_url = TARGETS[args.target]
-    renderer, constructor_args, compiler, source = prepare(chain_id, rpc_url)
+    prepared = prepare(chain_id, rpc_url)
     if args.submit:
         key = os.environ.get("ETHERSCAN_API_KEY")
         if not key:
             raise RuntimeError("ETHERSCAN_API_KEY is required for --submit")
-        submit(chain_id, renderer, constructor_args, compiler, source, key)
+        for name, path, target, constructor_args, compiler, source in prepared:
+            submit(chain_id, name, path, target, constructor_args, compiler, source, key)
     else:
-        print("Preflight passed. Rerun with --submit to publish source on Etherscan.")
+        print("Both preflights passed. Rerun with --submit to publish source on Etherscan.")
 
 
 if __name__ == "__main__":
     try:
         main()
     except (KeyError, OSError, RuntimeError, ValueError, subprocess.CalledProcessError) as exc:
-        print(f"renderer verification stopped: {exc}", file=sys.stderr)
+        print(f"source verification stopped: {exc}", file=sys.stderr)
         sys.exit(1)

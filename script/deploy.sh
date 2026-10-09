@@ -84,6 +84,7 @@ SUFFIX="${DEPLOYMENT_LABEL:+-$DEPLOYMENT_LABEL}"
 MANIFEST="deployments/${CHAIN_ID}${SUFFIX}.json"
 BROADCAST="broadcast/Deploy.s.sol/${CHAIN_ID}/run-latest.json"
 ARCHIVE="broadcast/Deploy.s.sol/${CHAIN_ID}/run-before-${DEPLOYMENT_LABEL}.json"
+SNAPSHOT="broadcast/Deploy.s.sol/${CHAIN_ID}/run-${DEPLOYMENT_LABEL}.json"
 
 # The chain the RPC reports must be the chain the env file names.
 ACTUAL_CHAIN="$(cast chain-id --rpc-url "$RPC_URL")"
@@ -117,8 +118,8 @@ if [ "$DRY_RUN" = "1" ]; then
 else
   [ ! -e "$MANIFEST" ] \
     || { echo "refusing: $MANIFEST already exists; reconcile before redeploying" >&2; exit 1; }
-  if [ -n "$DEPLOYMENT_LABEL" ] && [ -e "$ARCHIVE" ]; then
-    echo "refusing: $ARCHIVE marks a prior deployment attempt; inspect receipts before retrying" >&2
+  if [ -n "$DEPLOYMENT_LABEL" ] && { [ -e "$ARCHIVE" ] || [ -e "$SNAPSHOT" ]; }; then
+    echo "refusing: $DEPLOYMENT_LABEL marks a prior deployment attempt; inspect receipts before retrying" >&2
     exit 1
   fi
   if [ "$TARGET" != "anvil" ] && [ -e "$BROADCAST" ]; then

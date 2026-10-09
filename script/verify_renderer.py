@@ -12,7 +12,7 @@ import urllib.error
 import urllib.parse
 import urllib.request
 
-from record_deployment import address, deployment_path, rpc
+from record_deployment import address, broadcast_path, deployment_path, rpc
 
 
 ROOT = pathlib.Path(__file__).resolve().parent.parent
@@ -69,7 +69,7 @@ def prepare(chain_id, rpc_url, label=""):
     manifest = json.loads((ROOT / deployment_path(chain_id, label)).read_text())
     if manifest["chainId"] != chain_id:
         raise RuntimeError("deployment manifest has the wrong chain")
-    broadcast = json.loads((ROOT / f"broadcast/Deploy.s.sol/{chain_id}/run-latest.json").read_text())
+    broadcast = json.loads((ROOT / broadcast_path(chain_id, label)).read_text())
     transactions = broadcast["transactions"]
     if len(transactions) != len(CONTRACTS) or {t["contractName"] for t in transactions} != {
         name for name, _, _, _ in CONTRACTS

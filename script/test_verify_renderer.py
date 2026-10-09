@@ -9,7 +9,7 @@ import tempfile
 import unittest
 
 import verify_renderer
-from record_deployment import deployment_path
+from record_deployment import broadcast_path, deployment_path, save_new_file
 
 
 class VerificationInputTest(unittest.TestCase):
@@ -49,8 +49,17 @@ class VerificationInputTest(unittest.TestCase):
     def test_versioned_record_preserves_original_manifest_name(self):
         self.assertEqual(str(deployment_path(11155111)), "deployments/11155111.json")
         self.assertEqual(str(deployment_path(11155111, "v2")), "deployments/11155111-v2.json")
+        self.assertEqual(str(broadcast_path(11155111, "v2")), "broadcast/Deploy.s.sol/11155111/run-v2.json")
         with self.assertRaisesRegex(ValueError, "invalid deployment label"):
             deployment_path(11155111, "../old")
+
+    def test_broadcast_snapshot_cannot_be_replaced(self):
+        with tempfile.TemporaryDirectory() as temp:
+            snapshot = pathlib.Path(temp) / "run-v2.json"
+            save_new_file(snapshot, b"first")
+            with self.assertRaises(FileExistsError):
+                save_new_file(snapshot, b"second")
+            self.assertEqual(snapshot.read_bytes(), b"first")
 
     def test_public_deploy_rejects_invalid_label(self):
         result = self._wrapper_with_stub_git(DEPLOYMENT_LABEL="../old")
@@ -75,7 +84,7 @@ class VerificationInputTest(unittest.TestCase):
                 "git": '#!/bin/sh\nif [ "$1" = branch ]; then echo main; else echo /mock/git; fi\n',
                 "cast": "#!/bin/sh\necho 11155111\n",
                 "forge": '#!/bin/sh\nif [ "$1" = script ]; then echo "new broadcast" > broadcast/Deploy.s.sol/11155111/run-latest.json; fi\n',
-                "python3": '#!/bin/sh\necho "new manifest" > "deployments/11155111-$6.json"\n',
+                "python3": '#!/bin/sh\ncp broadcast/Deploy.s.sol/11155111/run-latest.json "broadcast/Deploy.s.sol/11155111/run-$6.json"\necho "new manifest" > "deployments/11155111-$6.json"\n',
             }
             for name, source in stubs.items():
                 executable = bin_dir / name
@@ -102,6 +111,7 @@ class VerificationInputTest(unittest.TestCase):
             self.assertEqual((root / "deployments/11155111-v2.json").read_text(), "new manifest\n")
             self.assertEqual((broadcast / "run-before-v2.json").read_text(), "old broadcast")
             self.assertEqual((broadcast / "run-latest.json").read_text(), "new broadcast\n")
+            self.assertEqual((broadcast / "run-v2.json").read_text(), "new broadcast\n")
 
             # A failed attempt may leave no new run-latest; the archive still blocks a retry.
             (root / "deployments/11155111-v2.json").unlink()
@@ -115,7 +125,7 @@ class VerificationInputTest(unittest.TestCase):
                 check=False,
             )
             self.assertNotEqual(retry.returncode, 0)
-            self.assertIn("marks a prior deployment attempt", retry.stderr)
+            self.assertIn("v2 marks a prior deployment attempt", retry.stderr)
             self.assertFalse((broadcast / "run-latest.json").exists())
 
     def _wrapper_with_stub_git(self, **overrides):

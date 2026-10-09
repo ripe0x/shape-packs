@@ -25,6 +25,24 @@ def deployment_path(chain_id, label=""):
     return pathlib.Path(f"deployments/{chain_id}{'-' + label if label else ''}.json")
 
 
+def broadcast_path(chain_id, label=""):
+    deployment_path(chain_id, label)  # Apply the same path-safety check.
+    name = f"run-{label}.json" if label else "run-latest.json"
+    return pathlib.Path(f"broadcast/Deploy.s.sol/{chain_id}/{name}")
+
+
+def save_new_file(path, content):
+    temporary = None
+    try:
+        with tempfile.NamedTemporaryFile("wb", dir=path.parent, prefix=".deployment-", delete=False) as out:
+            temporary = out.name
+            out.write(content)
+        os.link(temporary, path)  # Never replace an existing record or broadcast snapshot.
+    finally:
+        if temporary:
+            os.unlink(temporary)
+
+
 def rpc(url, method, params):
     payload = json.dumps({"jsonrpc": "2.0", "id": 1, "method": method, "params": params}).encode()
     for attempt in range(4):
@@ -61,8 +79,9 @@ def record(chain_id, url, shapes_input, admin_input, label=""):
     if int(rpc(url, "eth_chainId", []), 16) != chain_id:
         raise RuntimeError("RPC chain id changed during deployment")
 
-    artifact = pathlib.Path(f"broadcast/Deploy.s.sol/{chain_id}/run-latest.json")
-    transactions = json.loads(artifact.read_text())["transactions"]
+    artifact = broadcast_path(chain_id)
+    broadcast = artifact.read_bytes()
+    transactions = json.loads(broadcast)["transactions"]
     by_name = {item["contractName"]: item for item in transactions}
     if len(transactions) != 2 or set(by_name) != {"ShapePackRenderer", "ShapePacks"}:
         raise RuntimeError("broadcast does not contain exactly the two expected creations")
@@ -116,16 +135,9 @@ def record(chain_id, url, shapes_input, admin_input, label=""):
         "deployer": deployer,
         "blockNumber": max(int(item["blockNumber"], 16) for item in receipts.values()),
     }
-    temporary = None
-    try:
-        with tempfile.NamedTemporaryFile("w", dir=path.parent, prefix=".deployment-", delete=False) as out:
-            temporary = out.name
-            json.dump(manifest, out, indent=2)
-            out.write("\n")
-        os.link(temporary, path)  # Refuse to replace an existing deployment record.
-    finally:
-        if temporary:
-            os.unlink(temporary)
+    if label:
+        save_new_file(broadcast_path(chain_id, label), broadcast)
+    save_new_file(path, (json.dumps(manifest, indent=2) + "\n").encode())
 
 
 if __name__ == "__main__":

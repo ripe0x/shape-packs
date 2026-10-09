@@ -1,10 +1,17 @@
 # Project state
 
-Phase: Sepolia deployed; both contracts source verified
-Branch: main (primary checkout)
-Code candidate: f09773dc75f572708899ef3b6b3fcad06ec005f1
+Phase: Renderer redesign, visual review pending
+Branch: detached implementation worktree; deployment remains restricted to primary main
+Code candidate: local implementation commit under visual review (current HEAD)
 Product rules: [DESIGN.md](../DESIGN.md) and [SECURITY.md](../SECURITY.md)
-Launch status: Sepolia contracts live and source verified; mainnet not deployed
+Launch status: Existing Sepolia contracts remain live; replacement contracts are not deployed
+
+The redesign draws up to eleven actual Shape faces, ordered by redeemable backing with token-id
+ties. The highest-value face is centred in front; the others alternate left and right. The
+contractURI uses the same layout with three illustrative faces. Rendered 1-, 2-, 3-, 5-, 7-,
+10-, 11- and 12-Shape examples are in `preview/fan-contact-sheet.png` (ignored, local review
+artifact). The user requested visual confirmation before the layout is final. Default and testnet
+Foundry suites pass, 218 tests each; deployment and live RPC checks remain pending.
 
 On October 9, 2026, both creation receipts succeeded. `ShapePackRenderer` is at
 `0xd9ff1d1b7dd7b26a7b52c5f7f8abad7d216ceeb4` (transaction
@@ -26,4 +33,5 @@ The release workflow now separates broadcasting from source verification. The ve
 both live creation transactions against one full deployment build and submits only Standard JSON
 fields, so neither of the two failed retry paths is used for a future mainnet deployment.
 
-Next: run Sepolia post-deployment smoke checks before considering mainnet. Do not redeploy Sepolia.
+Next: obtain visual feedback on the fan previews, then commit the accepted renderer change and
+prepare a clean-main Sepolia redeployment for the user to execute.

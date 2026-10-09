@@ -27,20 +27,24 @@ contract Preview is Script {
         ShapePackRenderer renderer = new ShapePackRenderer(address(shapes));
         ShapePacks packs = new ShapePacks(address(shapes), address(renderer), USER);
 
-        uint32[] memory counts = new uint32[](shapes.denominationCount());
         uint256[] memory none;
-
-        counts[1] = 1;
-        _write(packs, renderer, packs.createPack{value: _cost(shapes, counts)}(none, counts), "pack-1");
-
-        counts[1] = 0;
-        counts[0] = 3;
-        _write(packs, renderer, packs.createPack{value: _cost(shapes, counts)}(none, counts), "pack-3");
-
-        counts[0] = 6;
-        counts[2] = 2;
-        counts[4] = 2;
-        _write(packs, renderer, packs.createPack{value: _cost(shapes, counts)}(none, counts), "pack-10");
+        uint32[8] memory sizes = [uint32(1), 2, 3, 5, 7, 10, 11, 12];
+        for (uint256 i = 0; i < sizes.length; ++i) {
+            uint32 n = sizes[i];
+            uint32[] memory counts = new uint32[](shapes.denominationCount());
+            if (n == 1) {
+                counts[1] = 1;
+            } else if (n == 2) {
+                counts[0] = 1;
+                counts[1] = 1;
+            } else {
+                counts[0] = n - 2;
+                counts[1] = 1;
+                counts[2] = 1;
+            }
+            uint256 packId = packs.createPack{value: _cost(shapes, counts)}(none, counts);
+            _write(packs, packId, string.concat("pack-", vm.toString(n)));
+        }
 
         vm.writeFile("preview/collection.uri.txt", packs.contractURI());
         vm.stopPrank();
@@ -52,7 +56,7 @@ contract Preview is Script {
         }
     }
 
-    function _write(ShapePacks packs, ShapePackRenderer, uint256 packId, string memory name) private {
+    function _write(ShapePacks packs, uint256 packId, string memory name) private {
         vm.writeFile(string.concat("preview/", name, ".uri.txt"), packs.tokenURI(packId));
     }
 }

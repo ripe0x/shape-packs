@@ -14,32 +14,23 @@ import {ShapeState} from "shapes/ShapeTypes.sol";
 import {IShapePackRenderer, PackRenderInput} from "./interfaces/IShapePackRenderer.sol";
 
 /// @title ShapePackRenderer
-/// @notice Draws a pack as a stack of Shapes cards and describes it as JSON. The first few Shapes
-///         in a pack show as fanned cards, drawn by whatever renderer Shapes presents; the rest
-///         are plain black card backs behind them. Black and white, no fonts, as a Shape.
+/// @notice Draws a pack as a fan of its highest-backed Shapes and describes it as JSON.
 /// @dev View-only logic. Its only immutable configuration is the Shapes address; the renderer is
-///      read from Shapes on every call, so pack art follows Shapes' art. Layout is the
-///      `ShapeCollection.imageFor` card, 2000x2800 at (920,520) on a 3840 canvas, with the same
-///      rounded corners and drop shadow. Card artwork is the renderer's nested 2000x2800 `<svg>`,
-///      placed by translating to the card origin and clipped to the rounded rect. Callers supply
-///      JSON-safe copy; `ShapePacks` validates it when it is set.
+///      read from Shapes on every call, so pack art follows Shapes' art. Each 2000x2800 Shapes
+///      SVG is fitted without distortion into a portrait card on a 3840 square canvas. Callers
+///      supply JSON-safe copy; `ShapePacks` validates it when it is set.
 contract ShapePackRenderer is IShapePackRenderer, IERC165 {
-    /// @dev Card width and height in canvas units, as `ShapeCollection`.
-    uint256 private constant CARD_W = 2000;
-    uint256 private constant CARD_H = 2800;
-    /// @dev Front card origin.
-    uint256 private constant FRONT_X = 920;
-    uint256 private constant FRONT_Y = 520;
-    /// @dev Fan step per drawn card, up and to the left, and its rotation in degrees.
-    uint256 private constant FAN_DX = 120;
-    uint256 private constant FAN_DY = 84;
-    uint256 private constant FAN_DEG = 5;
-    /// @dev Offset per card back, up and to the left, and the most backs ever drawn.
-    uint256 private constant BACK_STEP = 48;
-    uint256 private constant MAX_BACKS = 4;
-    /// @dev Card centre in canvas units, the pivot for each fan rotation.
-    uint256 private constant CENTER_X = FRONT_X + CARD_W / 2;
-    uint256 private constant CENTER_Y = FRONT_Y + CARD_H / 2;
+    uint256 private constant CANVAS = 3840;
+    uint256 private constant CENTER = CANVAS / 2;
+    uint256 private constant MAX_CARDS = 11;
+
+    struct CardSlot {
+        uint256 x;
+        uint256 y;
+        uint256 width;
+        uint256 height;
+        string angle;
+    }
 
     /// @inheritdoc IShapePackRenderer
     address public immutable shapes;
@@ -180,30 +171,29 @@ contract ShapePackRenderer is IShapePackRenderer, IERC165 {
 
     /* -------------------------------- images -------------------------------- */
 
-    /// @dev Pack stack: each top card through the live Shapes renderer, then the remaining
-    ///      Shapes as up to `MAX_BACKS` plain backs.
+    /// @dev Rank zero is the centred front card; each following pair goes left and right.
     function _image(PackRenderInput calldata input) private view returns (string memory) {
         IShapeRenderer renderer = IShapeRenderer(IShapes(shapes).renderer());
         uint256 n = input.topCards.length;
+        if (n > MAX_CARDS) n = MAX_CARDS;
         string[] memory cards = new string[](n);
         for (uint256 i = 0; i < n; ++i) {
             cards[i] = _artwork(renderer, input.topCards[i]);
         }
-        uint256 hidden = input.shapeCount > n ? input.shapeCount - n : 0;
-        return _stack(cards, hidden < MAX_BACKS ? hidden : MAX_BACKS);
+        return _stack(cards);
     }
 
-    /// @dev Three illustrative cards, front to back at denominations 4, 2 and 0, over two backs.
-    ///      Backs only when Shapes has no collection set.
+    /// @dev Three illustrative cards in the same fan. A collection-less Shapes falls back to
+    ///      an empty black card; no external art is available in that configuration.
     function _collectionImage(bytes32 seed) private view returns (string memory) {
         address collection = IShapes(shapes).collection();
-        if (collection == address(0)) return _stack(new string[](0), 2);
+        if (collection == address(0)) return _stack(new string[](0));
         string[] memory cards = new string[](3);
         uint8[3] memory denoms = [uint8(4), 2, 0];
         for (uint256 i = 0; i < 3; ++i) {
             cards[i] = IShapeCollection(collection).cardFor(keccak256(abi.encodePacked(seed, i)), denoms[i]);
         }
-        return _stack(cards, 2);
+        return _stack(cards);
     }
 
     /// @dev The Shapes artwork for one card: sampled modules when present, else the seed.
@@ -218,58 +208,49 @@ contract ShapePackRenderer is IShapePackRenderer, IERC165 {
         return renderer.renderSVG(state.seed, state.faceValueWei, state.isBlack, state.inkGene);
     }
 
-    /// @dev The shared stack. `cards` are finished card SVGs, index 0 frontmost; `backs` plain
-    ///      black cards sit behind the last drawn card, continuing its fan, each a step further up
-    ///      and to the left, so a deep pack reads as a thick stack behind the cards that show.
-    function _stack(string[] memory cards, uint256 backs) private pure returns (string memory) {
-        uint256 last = cards.length == 0 ? 0 : cards.length - 1;
-        bytes memory body;
-        if (backs > 0) {
-            body = abi.encodePacked(body, "<g", _fan(last), ">");
-            for (uint256 k = backs; k > 0; --k) {
-                body = abi.encodePacked(body, _back(k));
+    /// @dev Draw lower-value cards first. Only the centre face covers the inner edge of both
+    ///      sides; each outward pair exposes part of its own Shapes artwork.
+    function _stack(string[] memory cards) private pure returns (string memory) {
+        uint256 n = cards.length;
+        if (n > MAX_CARDS) n = MAX_CARDS;
+        bytes memory body = _open(n == 0 ? 1 : n);
+        if (n == 0) {
+            body = abi.encodePacked(body, _card(0, 1, ""));
+        } else {
+            for (uint256 i = n; i > 0; --i) {
+                body = abi.encodePacked(body, _card(i - 1, n, cards[i - 1]));
             }
-            body = abi.encodePacked(body, "</g>");
         }
-        for (uint256 i = cards.length; i > 0; --i) {
-            body = abi.encodePacked(body, _card(i - 1, cards[i - 1]));
-        }
-        // The fan spreads up and to the left of the front card; shift the whole stack by half
-        // that spread so the composition stays centred on the canvas.
-        return string(
-            abi.encodePacked(
-                _open(cards.length),
-                '<g transform="translate(',
-                FixedPoint.toString((last * FAN_DX + backs * BACK_STEP) / 2),
-                ",",
-                FixedPoint.toString((last * FAN_DY + backs * BACK_STEP) / 2),
-                ')">',
-                body,
-                "</g></svg>"
-            )
-        );
+        return string(abi.encodePacked(body, "</svg>"));
     }
 
-    /// @dev The fan transform for drawn card `i`: up-left by `i` steps and tilted about the front
-    ///      card's centre. Empty for the front card, so it carries no transform at all.
-    function _fan(uint256 i) private pure returns (bytes memory) {
-        if (i == 0) return "";
-        return abi.encodePacked(
-            ' transform="translate(',
-            _neg(i * FAN_DX),
-            ",",
-            _neg(i * FAN_DY),
-            ") rotate(",
-            _neg(i * FAN_DEG),
-            " ",
-            FixedPoint.toString(CENTER_X),
-            " ",
-            FixedPoint.toString(CENTER_Y),
-            ')"'
-        );
+    /// @dev The front face shrinks as pairs are added so eleven cards fit inside the square.
+    ///      Side cards keep their bottoms aligned and rotate outwards, like the Draw frontend.
+    function _slot(uint256 rank, uint256 n) private pure returns (CardSlot memory slot) {
+        uint256 pairs = n / 2;
+        uint256 frontWidth = 1600 - (pairs == 0 ? 0 : (pairs - 1) * 150);
+        uint256 frontHeight = frontWidth * 7 / 5;
+        uint256 baseline = (CANVAS + frontHeight) / 2;
+        if (rank == 0) {
+            slot.width = frontWidth;
+            slot.height = frontHeight;
+            slot.x = CENTER - frontWidth / 2;
+            slot.y = baseline - frontHeight;
+            slot.angle = "-1";
+            return slot;
+        }
+        uint256 pair = (rank + 1) / 2;
+        slot.width = frontWidth * (80 + (pairs - 1) * 3) / 100;
+        slot.height = slot.width * 7 / 5;
+        uint256 step = (CENTER - slot.width / 2 - 180) / pairs;
+        uint256 offset = pair * step;
+        slot.x = rank % 2 == 1 ? CENTER - offset - slot.width / 2 : CENTER + offset - slot.width / 2;
+        slot.y = baseline - slot.height;
+        uint256 tilt = 11 - pair * 2;
+        slot.angle = rank % 2 == 1 ? _neg(tilt) : FixedPoint.toString(tilt);
     }
 
-    /// @dev Canvas, white ground, and one `<defs>` with the shadow and one clip path per card.
+    /// @dev Canvas, white ground, shadow and local rounded clip paths for each Shape SVG.
     function _open(uint256 cardCount) private pure returns (bytes memory out) {
         out = abi.encodePacked(
             '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 3840 3840" width="3840" height="3840"'
@@ -283,31 +264,42 @@ contract ShapePackRenderer is IShapePackRenderer, IERC165 {
                 '<clipPath id="c',
                 FixedPoint.toString(i),
                 '">',
-                _rect(FRONT_X, FRONT_Y, ""),
+                '<rect width="2000" height="2800" rx="40"/>',
                 "</clipPath>"
             );
         }
         out = abi.encodePacked(out, '</defs><rect width="3840" height="3840" fill="#fff"/>');
     }
 
-    /// @dev A card back `k` steps behind the front card.
-    function _back(uint256 k) private pure returns (bytes memory) {
-        return _rect(FRONT_X - k * BACK_STEP, FRONT_Y - k * BACK_STEP, ' fill="#000" filter="url(#d)"');
-    }
-
-    /// @dev Drawn card `i`: fanned up-left and tilted about its own centre, black rounded rect
-    ///      for the shadow, artwork clipped to the same rect.
-    function _card(uint256 i, string memory art) private pure returns (bytes memory) {
+    /// @dev A Shapes SVG sits in a 2000x2800 local viewBox, scaled to the slot without distortion.
+    function _card(uint256 rank, uint256 n, string memory art) private pure returns (bytes memory) {
+        CardSlot memory slot = _slot(rank, n);
         return abi.encodePacked(
-            "<g",
-            _fan(i),
-            ">",
-            _rect(FRONT_X, FRONT_Y, ' fill="#000" filter="url(#d)"'),
-            '<g clip-path="url(#c',
-            FixedPoint.toString(i),
-            ')"><g transform="translate(920,520)">',
+            '<g transform="translate(',
+            FixedPoint.toString(slot.x),
+            ",",
+            FixedPoint.toString(slot.y),
+            ") rotate(",
+            slot.angle,
+            " ",
+            FixedPoint.toString(slot.width / 2),
+            " ",
+            FixedPoint.toString(slot.height / 2),
+            ')"><rect width="',
+            FixedPoint.toString(slot.width),
+            '" height="',
+            FixedPoint.toString(slot.height),
+            '" rx="',
+            FixedPoint.toString(slot.width / 50),
+            '" fill="#000" filter="url(#d)"/><svg width="',
+            FixedPoint.toString(slot.width),
+            '" height="',
+            FixedPoint.toString(slot.height),
+            '" viewBox="0 0 2000 2800"><g clip-path="url(#c',
+            FixedPoint.toString(rank),
+            ')">',
             art,
-            "</g></g></g>"
+            "</g></svg></g>"
         );
     }
 
@@ -315,18 +307,5 @@ contract ShapePackRenderer is IShapePackRenderer, IERC165 {
     function _neg(uint256 magnitude) private pure returns (string memory) {
         if (magnitude == 0) return "0";
         return string(abi.encodePacked("-", FixedPoint.toString(magnitude)));
-    }
-
-    /// @dev A 2000x2800 rounded card rect at (x, y).
-    function _rect(uint256 x, uint256 y, string memory attrs) private pure returns (bytes memory) {
-        return abi.encodePacked(
-            '<rect x="',
-            FixedPoint.toString(x),
-            '" y="',
-            FixedPoint.toString(y),
-            '" width="2000" height="2800" rx="40"',
-            attrs,
-            "/>"
-        );
     }
 }

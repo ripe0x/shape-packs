@@ -171,23 +171,6 @@ abstract contract MetadataHelpers is PacksTest {
 }
 
 contract MetadataTest is MetadataHelpers {
-    /// @dev The opening of one card back, by offset: `k` steps behind the front card.
-    function _backSignature(uint256 k) internal pure returns (string memory) {
-        return string.concat(
-            '<rect x="',
-            FixedPoint.toString(920 - k * 48),
-            '" y="',
-            FixedPoint.toString(520 - k * 48),
-            '" width="2000" height="2800" rx="40" fill="#000" filter="url(#d)"/>'
-        );
-    }
-
-    function _backs(string memory svg) internal pure returns (uint256 n) {
-        for (uint256 k = 1; k <= 8; ++k) {
-            n += countOf(svg, _backSignature(k));
-        }
-    }
-
     function _drawnCards(string memory svg) internal pure returns (uint256) {
         return countOf(svg, '<g clip-path="url(#c');
     }
@@ -301,7 +284,7 @@ contract MetadataTest is MetadataHelpers {
         assertTrue(contains(json, '{"trait_type":"Source","value":"Mixed"}'), "Mixed after a pulled addition");
     }
 
-    /* ------------------------------ top cards ------------------------------ */
+    /* ------------------------------ card fan ------------------------------ */
 
     function test_TopCardCapOneShape() public {
         // A single 0.05 Shape is a valid pack (0.05 >= 0.03 on the mainnet ladder: 5 units >= 3).
@@ -309,8 +292,7 @@ contract MetadataTest is MetadataHelpers {
         string memory svg = svgOfPack(packId);
         assertEq(_drawnCards(svg), 1, "one card drawn");
         assertEq(countOf(svg, '<clipPath id="c'), 1, "one clip path");
-        assertEq(countOf(svg, "<svg"), 2, "outer canvas plus one nested card");
-        assertEq(_backs(svg), 0, "no backs");
+        assertEq(countOf(svg, "<svg"), 3, "outer canvas, slot, and Shape art");
     }
 
     function test_TopCardCapThreeShapes() public {
@@ -318,33 +300,30 @@ contract MetadataTest is MetadataHelpers {
         string memory svg = svgOfPack(packId);
         assertEq(_drawnCards(svg), 3, "three cards drawn");
         assertEq(countOf(svg, '<clipPath id="c'), 3, "three clip paths");
-        assertEq(countOf(svg, "<svg"), 4, "outer canvas plus three nested cards");
-        assertEq(_backs(svg), 0, "no backs for exactly three");
+        assertEq(countOf(svg, "<svg"), 7, "outer canvas plus three slots and art");
     }
 
     function test_TopCardCapTenShapes() public {
         uint256 packId = createFor(alice, noIds(), mintsOf(0, 10));
         string memory svg = svgOfPack(packId);
-        assertEq(_drawnCards(svg), 3, "still three cards drawn");
-        assertEq(countOf(svg, '<clipPath id="c'), 3, "three clip paths");
-        assertEq(countOf(svg, "<svg"), 4, "outer canvas plus three nested cards");
-        assertEq(_backs(svg), 4, "four backs, the cap, for seven hidden Shapes");
+        assertEq(_drawnCards(svg), 10, "all ten faces drawn");
+        assertEq(countOf(svg, '<clipPath id="c'), 10, "ten clip paths");
+        assertEq(countOf(svg, "<svg"), 21, "outer canvas plus ten slots and art");
     }
 
-    function test_BackCountScalesThenCaps() public {
-        // 4 Shapes: one hidden; 5: two hidden; 7: four hidden; 8: five hidden, capped at four.
-        uint256[4] memory sizes = [uint256(4), 5, 7, 8];
-        uint256[4] memory wantBacks = [uint256(1), 2, 4, 4];
+    function test_FanShowsAtMostElevenRealFaces() public {
+        uint256[5] memory sizes = [uint256(4), 5, 7, 11, 12];
         for (uint256 i = 0; i < sizes.length; ++i) {
             uint256 packId = createFor(alice, noIds(), mintsOf(0, uint32(sizes[i])));
             string memory svg = svgOfPack(packId);
-            assertEq(_drawnCards(svg), 3, "cards");
-            assertEq(_backs(svg), wantBacks[i], "backs");
+            uint256 shown = sizes[i] > 11 ? 11 : sizes[i];
+            assertEq(_drawnCards(svg), shown, "actual faces");
+            assertEq(countOf(svg, "<svg"), 1 + 2 * shown, "slot and Shape SVG per face");
         }
     }
 
     function test_TokenUriGasGrowthFor200ShapesIsUnderThreeMillion() public {
-        uint256 small = createFor(alice, noIds(), mintsOf(0, 3));
+        uint256 small = createFor(alice, noIds(), mintsOf(0, 11));
         uint256 large = createFor(alice, noIds(), mintsOf(0, 200));
         uint256 g0 = gasleft();
         packs.tokenURI(small);
@@ -352,23 +331,79 @@ contract MetadataTest is MetadataHelpers {
         g0 = gasleft();
         packs.tokenURI(large);
         uint256 largeGas = g0 - gasleft();
-        // The large pack reads 200 denomination indexes for its makeup, but draws no more cards.
+        // Both draw eleven faces; the large pack scans more ids for its makeup and ranking.
         assertLt(largeGas, smallGas + 3_000_000, "tokenURI of a 200-Shape pack stays bounded");
-        assertEq(_drawnCards(svgOfPack(large)), 3);
+        assertLt(largeGas, 25_000_000, "large tokenURI remains below a 30m eth_call budget");
+        assertEq(_drawnCards(svgOfPack(large)), 11);
     }
 
-    function test_TopCardsAreTheFirstThreeInContentsOrder() public {
-        uint256[] memory pulled = mintShapes(alice, 0, 5);
+    function test_HighestBackingIsFrontAndTiesUseTokenId() public {
+        uint256[] memory lows = mintShapes(alice, 0, 2);
+        uint256 middle = mintShape(alice, 1);
+        uint256 high = mintShape(alice, 2);
+        uint256[] memory pulled = new uint256[](4);
+        pulled[0] = lows[1];
+        pulled[1] = middle;
+        pulled[2] = lows[0];
+        pulled[3] = high;
         approveAll(alice);
         uint256 packId = createFor(alice, pulled, noMints());
 
         string memory svg = svgOfPack(packId);
         ShapeRenderer r = ShapeRenderer(shapes.renderer());
-        for (uint256 i = 0; i < 5; ++i) {
-            ShapeState memory st = shapes.shapeState(pulled[i]);
-            string memory art = r.renderSVG(st.seed, st.faceValueWei, st.isBlack, st.inkGene);
-            assertEq(contains(svg, art), i < 3, i < 3 ? "front three are drawn" : "the rest are not drawn");
+        ShapeState memory h = shapes.shapeState(high);
+        ShapeState memory m = shapes.shapeState(middle);
+        ShapeState memory l0 = shapes.shapeState(lows[0]);
+        ShapeState memory l1 = shapes.shapeState(lows[1]);
+        uint256 highAt = indexOf(svg, r.renderSVG(h.seed, h.faceValueWei, h.isBlack, h.inkGene));
+        uint256 middleAt = indexOf(svg, r.renderSVG(m.seed, m.faceValueWei, m.isBlack, m.inkGene));
+        uint256 low0At = indexOf(svg, r.renderSVG(l0.seed, l0.faceValueWei, l0.isBlack, l0.inkGene));
+        uint256 low1At = indexOf(svg, r.renderSVG(l1.seed, l1.faceValueWei, l1.isBlack, l1.inkGene));
+        assertTrue(highAt > middleAt && middleAt > low0At && low0At > low1At, "high first, id tie break");
+    }
+
+    function test_FanSelectsHighestElevenFromLargerPack() public {
+        uint256[] memory lows = mintShapes(alice, 0, 11);
+        uint256 high = mintShape(alice, 2);
+        uint256[] memory pulled = new uint256[](12);
+        for (uint256 i = 0; i < 11; ++i) {
+            pulled[i] = lows[i];
         }
+        pulled[11] = high;
+        approveAll(alice);
+        string memory svg = svgOfPack(createFor(alice, pulled, noMints()));
+        ShapeRenderer r = ShapeRenderer(shapes.renderer());
+        ShapeState memory h = shapes.shapeState(high);
+        ShapeState memory excluded = shapes.shapeState(lows[10]);
+        assertTrue(
+            contains(svg, r.renderSVG(h.seed, h.faceValueWei, h.isBlack, h.inkGene)), "late high card shown"
+        );
+        assertFalse(
+            contains(
+                svg, r.renderSVG(excluded.seed, excluded.faceValueWei, excluded.isBlack, excluded.inkGene)
+            ),
+            "lowest-ranked tied card omitted"
+        );
+    }
+
+    function test_AddedHigherValueBecomesFrontCard() public {
+        uint256[] memory lows = mintShapes(alice, 0, 3);
+        approveAll(alice);
+        uint256 packId = createFor(alice, lows, noMints());
+        uint256 high = mintShape(alice, 2);
+        uint32[] memory none = noMints();
+        vm.prank(alice);
+        packs.addToPack(packId, ids1(high), none);
+
+        string memory svg = svgOfPack(packId);
+        ShapeRenderer r = ShapeRenderer(shapes.renderer());
+        ShapeState memory h = shapes.shapeState(high);
+        ShapeState memory l = shapes.shapeState(lows[0]);
+        assertGt(
+            indexOf(svg, r.renderSVG(h.seed, h.faceValueWei, h.isBlack, h.inkGene)),
+            indexOf(svg, r.renderSVG(l.seed, l.faceValueWei, l.isBlack, l.inkGene)),
+            "added high card is drawn last"
+        );
     }
 
     function test_ComposeSurvivorRendersThroughSampledPath() public {
@@ -407,8 +442,8 @@ contract MetadataTest is MetadataHelpers {
         uint256[] memory pulled = ids2(plain, two[0]);
         uint256 packId = createFor(alice, pulled, mintsOf(0, 2));
         string memory svg = svgOfPack(packId);
-        assertEq(_drawnCards(svg), 3);
-        assertEq(countOf(svg, "<svg"), 4);
+        assertEq(_drawnCards(svg), 4);
+        assertEq(countOf(svg, "<svg"), 9);
         ShapeState memory st = shapes.shapeState(two[0]);
         ShapeRenderer r = ShapeRenderer(shapes.renderer());
         assertTrue(contains(svg, r.renderSVGSampled(st.modules, st.faceValueWei, st.isBlack, st.inkGene)));
@@ -464,9 +499,8 @@ contract MetadataTest is MetadataHelpers {
         string memory svg = svgOfJson(json);
         assertTrue(startsWith(svg, "<svg"));
         assertTrue(endsWith(svg, "</svg>"));
-        // Collection set on Shapes: three illustrative cards over two backs.
+        // Collection set on Shapes: three illustrative cards in the same fan.
         assertEq(_drawnCards(svg), 3, "illustrative cards");
-        assertEq(_backs(svg), 2, "two backs");
     }
 
     function test_ContractUriFollowsCopyEdits() public {
@@ -476,8 +510,8 @@ contract MetadataTest is MetadataHelpers {
         assertTrue(contains(json, '"description":"Edited collection copy."'));
     }
 
-    function test_ContractUriWithoutShapesCollectionFallsBackToBacks() public {
-        // A Shapes with no collection set: the renderer draws two plain backs and never reverts.
+    function test_ContractUriWithoutShapesCollectionFallsBackToBlankCard() public {
+        // A Shapes with no collection set still produces a valid image.
         ShapeRenderer sr = new ShapeRenderer();
         Shapes bare = new Shapes{value: Denominations.amountAt(0)}(MINT_FEE, feeRecipient, address(sr), 0);
         assertEq(bare.collection(), address(0));
@@ -486,8 +520,7 @@ contract MetadataTest is MetadataHelpers {
         assertTrue(contains(json, '"name":"Shape Packs"'));
         string memory svg = svgOfJson(json);
         assertTrue(startsWith(svg, "<svg"));
-        assertEq(_drawnCards(svg), 0, "no cards without a collection");
-        assertEq(_backs(svg), 2);
+        assertEq(_drawnCards(svg), 1, "one empty card without a collection");
     }
 
     /* ------------------------- reflects state changes ------------------------- */

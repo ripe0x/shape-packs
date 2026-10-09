@@ -1,8 +1,8 @@
 # Project state
 
-Phase: Admin preview-limit implementation reviewed; merge pending
-Branch: detached implementation worktree; public-chain deployment uses primary main only
-Code candidate: 081c2c5; renderer layout 6275bf4 remains accepted
+Phase: Admin preview-limit implementation merged; pre-deployment rehearsal pending
+Branch: primary main; public-chain deployment uses the clean primary checkout only
+Code candidate: 081c2c5, merged by 7c28c22; renderer layout 6275bf4 remains accepted
 Product rules: [DESIGN.md](../DESIGN.md) and [SECURITY.md](../SECURITY.md)
 Launch status: Sepolia v2 deployed; user reports both contracts source-verified
 Constraint: Deployed collections cannot gain the proposed setter. The original collection caps
@@ -59,5 +59,7 @@ set any positive limit until locked. It passes up to that many top-ranked Shape 
 renderer still draws no more than twelve. New setting affects token images only and emits an
 ERC-4906 batch update. Default and testnet suites pass, 226 tests each; release-tool regressions
 pass 10 tests and the deployment script builds. An independent review of 081c2c5 found no blocker;
-the previous ERC-165 interface ID remains supported. The original Sepolia collection still points
-to its old renderer as of the latest live read. Next: merge 1eff6b4 and 081c2c5 into primary main.
+the previous ERC-165 interface ID remains supported. Deployment and preview script NatSpec was
+updated in e6317d4 and both scripts compile. The original Sepolia collection still points to its
+old renderer as of the latest live read. Next: rehearse the next Sepolia deployment from clean
+primary main against Tenderly's public RPC before giving the user broadcast commands.

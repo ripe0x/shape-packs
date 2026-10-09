@@ -21,6 +21,9 @@ The standalone retry compiled only the renderer's 18-source import graph, while 
 script compiled 47 sources, so its bytecode differed. A full-input submission then failed because
 Foundry's build info included the CLI-only `allowPaths` field. The corrected helper sent the full
 source set with only Solidity Standard JSON keys; both public Etherscan code pages now show an
-exact match. The wrapper records valid onchain state even when explorer verification exits nonzero.
+exact match. The wrapper records valid onchain state even if Forge exits nonzero after broadcast.
+The release workflow now separates broadcasting from source verification. The verifier checks
+both live creation transactions against one full deployment build and submits only Standard JSON
+fields, so neither of the two failed retry paths is used for a future mainnet deployment.
 
 Next: run Sepolia post-deployment smoke checks before considering mainnet. Do not redeploy Sepolia.

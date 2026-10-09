@@ -324,12 +324,48 @@ contract MetadataTest is MetadataHelpers {
         assertTrue(contains(svg, '<g transform="translate(478,1775) rotate(-9 375 525)"'), "outer left");
     }
 
+    function test_EvenPacksThroughEightUseBalancedPairs() public {
+        uint32[3] memory sizes = [uint32(4), 6, 8];
+        string[3] memory leftCentres = [
+            '<g transform="translate(754,1005) rotate(-5 653 914)"',
+            '<g transform="translate(1058,1244) rotate(-5 483 676)"',
+            '<g transform="translate(1261,1403) rotate(-5 369 516)"'
+        ];
+        string[3] memory rightCentres = [
+            '<g transform="translate(1780,1005) rotate(5 653 914)"',
+            '<g transform="translate(1816,1244) rotate(5 483 676)"',
+            '<g transform="translate(1841,1403) rotate(5 369 516)"'
+        ];
+        string[3] memory leftOuters = [
+            '<g transform="translate(199,1462) rotate(-11 490 686)"',
+            '<g transform="translate(199,1812) rotate(-9 280 392)"',
+            '<g transform="translate(199,1837) rotate(-7 214 299)"'
+        ];
+        string[3] memory rightOuters = [
+            '<g transform="translate(2661,1462) rotate(9 490 686)"',
+            '<g transform="translate(3081,1812) rotate(7 280 392)"',
+            '<g transform="translate(3213,1837) rotate(5 214 299)"'
+        ];
+        for (uint256 i = 0; i < sizes.length; ++i) {
+            string memory svg = svgOfPack(createFor(alice, noIds(), mintsOf(0, sizes[i])));
+            assertEq(_drawnCards(svg), sizes[i], "all faces drawn");
+            assertTrue(contains(svg, leftOuters[i]) && contains(svg, rightOuters[i]), "balanced outer pair");
+            uint256 rightAt = indexOf(svg, rightCentres[i]);
+            uint256 leftAt = indexOf(svg, leftCentres[i]);
+            assertTrue(rightAt != type(uint256).max && leftAt != type(uint256).max, "balanced centre pair");
+            assertLt(rightAt, leftAt, "highest-backed centre card drawn last");
+        }
+    }
+
     function test_TopCardCapTenShapes() public {
         uint256 packId = createFor(alice, noIds(), mintsOf(0, 10));
         string memory svg = svgOfPack(packId);
         assertEq(_drawnCards(svg), 10, "all ten faces drawn");
         assertEq(countOf(svg, '<clipPath id="c'), 10, "ten clip paths");
         assertEq(countOf(svg, "<svg"), 21, "outer canvas plus ten slots and art");
+        assertTrue(
+            contains(svg, '<g transform="translate(1527,1370) rotate(-1 393 550)"'), "single centre at ten"
+        );
     }
 
     function test_FanShowsAtMostElevenRealFaces() public {

@@ -371,16 +371,17 @@ struct PackRenderInput {
 }
 ```
 
-**Image.** A centred fan on a square canvas, following the Draw Shapes index hero carousel's
-size steps and easing tilt. The three-Shape fan keeps the hero spacing; four or more Shapes
-use 75% of the initial preview's centre spacing, so all eleven faces fit. With at least three
-Shapes, the highest-backed Shape is the front centre card; the
-rest alternate right, left, then outward in pairs. A two-Shape pack shows two equally sized
-cards side by side with centres 1,140 canvas units apart, 25% closer than the initial preview.
-The higher-backed card is drawn on top. Equal backing is ordered by
-ascending token id. Up to eleven real Shape faces are drawn; if a pack is larger, these are its
-eleven highest-backed Shapes and the full count and makeup remain in metadata. This display sort never
-changes custody or contents order. The renderer uses Shapes' live `renderer()`, calling
+**Image.** A fan on a square canvas, following the Draw Shapes index hero carousel's
+size steps and easing tilt. Packs with 2, 4, 6 or 8 Shapes use a balanced centre pair: the two
+highest-backed faces have the same size and overlap like the two-Shape pack, while lower-backed
+faces fill matched left and right outer positions. The pair and its spacing scale together as
+more faces are added. Three Shapes keep the hero spacing. Odd counts from five onward and counts
+of ten or more use 75% of the initial preview's centre spacing, with the highest-backed Shape
+centred in front and the rest alternating right and left. The highest-backed face is always
+drawn on top. Equal backing is ordered by ascending token id. Up to eleven real Shape faces are
+drawn; if a pack is larger, these are its eleven highest-backed Shapes and the full count and
+makeup remain in metadata. This display sort never changes custody or contents order. The renderer
+uses Shapes' live `renderer()`, calling
 `renderSVG` for seed-derived cards and `renderSVGSampled` when `modules` is nonempty. Each face
 keeps its 5:7 aspect ratio and its art is clipped only to its own rounded card. There are no
 plain black backs. The fixed eleven-face ceiling bounds artwork rendering; `tokenURI` still

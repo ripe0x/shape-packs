@@ -171,7 +171,7 @@ contract ShapePackRenderer is IShapePackRenderer, IERC165 {
 
     /* -------------------------------- images -------------------------------- */
 
-    /// @dev Rank zero is the centred front card, except for the balanced two-card layout.
+    /// @dev Rank zero is centred except in balanced even fans of up to eight cards.
     function _image(PackRenderInput calldata input) private view returns (string memory) {
         IShapeRenderer renderer = IShapeRenderer(IShapes(shapes).renderer());
         uint256 n = input.topCards.length;
@@ -224,17 +224,10 @@ contract ShapePackRenderer is IShapePackRenderer, IERC165 {
     }
 
     /// @dev The Draw index hero uses 75% inner faces, 58% outer faces and tilts that
-    ///      ease by two degrees per pair. Keep three-card spacing; compress centres
-    ///      by 25% for larger fans so eleven faces remain visible in the square.
+    ///      ease by two degrees per pair. Even fans through eight use a scaled two-card
+    ///      centre; other fans keep their existing centre and spacing.
     function _slot(uint256 rank, uint256 n) private pure returns (CardSlot memory slot) {
-        if (n == 2) {
-            slot.width = 1450;
-            slot.height = slot.width * 7 / 5;
-            slot.x = rank == 0 ? CENTER - 570 - slot.width / 2 : CENTER + 570 - slot.width / 2;
-            slot.y = (CANVAS - slot.height) / 2;
-            slot.angle = rank == 0 ? "-5" : "5";
-            return slot;
-        }
+        if (n <= 8 && n % 2 == 0) return _evenSlot(rank, n);
 
         uint256 pairs = n / 2;
         uint256 stepPercent = 65 - pairs * 5;
@@ -258,6 +251,25 @@ contract ShapePackRenderer is IShapePackRenderer, IERC165 {
         slot.x = right ? CENTER + offset - slot.width / 2 : CENTER - offset - slot.width / 2;
         slot.y = baseline - slot.height;
         slot.angle = right ? FixedPoint.toString(11 - pair * 2) : _neg(13 - pair * 2);
+    }
+
+    /// @dev Keep the two-card pair's width-to-spacing ratio at every even size. The
+    ///      outer pairs mirror each other and shrink together to fit the canvas.
+    function _evenSlot(uint256 rank, uint256 n) private pure returns (CardSlot memory slot) {
+        uint256 pairs = n / 2;
+        uint256 frontWidth =
+            n == 2 ? 1450 : (CANVAS - 400) * 100 / (2 * (39 + (pairs - 1) * 55) + (pairs == 2 ? 75 : 58));
+        uint256 pair = rank / 2;
+        bool right = rank % 2 == 1;
+        if (pair == 0) slot.width = frontWidth;
+        else if (pair == 1) slot.width = frontWidth * 75 / 100;
+        else slot.width = frontWidth * 58 / 100;
+        slot.height = slot.width * 7 / 5;
+        uint256 offset = frontWidth * 570 / 1450 + pair * frontWidth * 55 / 100;
+        slot.x = right ? CENTER + offset - slot.width / 2 : CENTER - offset - slot.width / 2;
+        slot.y = (CANVAS + frontWidth * 7 / 5) / 2 - slot.height;
+        if (pair == 0) slot.angle = right ? "5" : "-5";
+        else slot.angle = right ? FixedPoint.toString(11 - pair * 2) : _neg(13 - pair * 2);
     }
 
     /// @dev Canvas, white ground, shadow and local rounded clip paths for each Shape SVG.

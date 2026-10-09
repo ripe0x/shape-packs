@@ -175,8 +175,9 @@ struct PackState {
 
 Pack ids start at 1 and are never reissued, so `packOf(shapeId) == 0` means "not packed". That is
 the hook a site or indexer uses to say "this Shape is inside Pack #N". `tokenURI(packId)` is a
-fully onchain `data:` URI: a fan of up to eleven real Shape faces, highest redeemable
-backing in front and equal-value ties broken by token id. Two-Shape packs show a balanced pair.
+fully onchain `data:` URI: a fan of up to eleven real Shape faces,
+highest redeemable backing in front and equal-value ties broken by token id. Packs with 2, 4, 6 or 8 Shapes show
+a balanced centre pair, with smaller faces evenly distributed on both sides.
 Larger packs show their eleven highest-backed Shapes; the full makeup remains in the description
 and attributes. Display order does not change the pack's contents or custody order.
 

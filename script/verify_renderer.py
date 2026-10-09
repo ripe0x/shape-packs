@@ -103,7 +103,9 @@ def prepare(chain_id, rpc_url):
     compiler = json.loads(contract["metadata"])["compiler"]["version"]
     if compiler != "0.8.28+commit.7893614a":
         raise RuntimeError(f"unexpected compiler version: {compiler}")
-    source = json.dumps(build["input"], separators=(",", ":"))
+    # Foundry build info also carries CLI path options. Solc's Standard JSON API rejects them.
+    compiler_input = {key: build["input"][key] for key in ("language", "sources", "settings")}
+    source = json.dumps(compiler_input, separators=(",", ":"))
     print(f"Matched live renderer creation at {renderer} ({len(bytecode) // 2} bytecode bytes).")
     return renderer, expected_args, compiler, source
 

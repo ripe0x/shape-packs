@@ -103,6 +103,21 @@ class VerificationInputTest(unittest.TestCase):
             self.assertEqual((broadcast / "run-before-v2.json").read_text(), "old broadcast")
             self.assertEqual((broadcast / "run-latest.json").read_text(), "new broadcast\n")
 
+            # A failed attempt may leave no new run-latest; the archive still blocks a retry.
+            (root / "deployments/11155111-v2.json").unlink()
+            (broadcast / "run-latest.json").unlink()
+            retry = subprocess.run(
+                ["bash", "script/deploy.sh", "sepolia"],
+                cwd=root,
+                env=env,
+                text=True,
+                capture_output=True,
+                check=False,
+            )
+            self.assertNotEqual(retry.returncode, 0)
+            self.assertIn("marks a prior deployment attempt", retry.stderr)
+            self.assertFalse((broadcast / "run-latest.json").exists())
+
     def _wrapper_with_stub_git(self, **overrides):
         root = pathlib.Path(__file__).parent.parent
         with tempfile.TemporaryDirectory() as temp:

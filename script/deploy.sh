@@ -117,8 +117,12 @@ if [ "$DRY_RUN" = "1" ]; then
 else
   [ ! -e "$MANIFEST" ] \
     || { echo "refusing: $MANIFEST already exists; reconcile before redeploying" >&2; exit 1; }
+  if [ -n "$DEPLOYMENT_LABEL" ] && [ -e "$ARCHIVE" ]; then
+    echo "refusing: $ARCHIVE marks a prior deployment attempt; inspect receipts before retrying" >&2
+    exit 1
+  fi
   if [ "$TARGET" != "anvil" ] && [ -e "$BROADCAST" ]; then
-    if [ -z "$DEPLOYMENT_LABEL" ] || [ -e "$ARCHIVE" ]; then
+    if [ -z "$DEPLOYMENT_LABEL" ]; then
       echo "refusing: prior broadcast exists; inspect receipts before retrying" >&2
       exit 1
     fi

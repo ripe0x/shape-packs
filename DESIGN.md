@@ -375,7 +375,8 @@ struct PackRenderInput {
 size steps and easing tilt. Packs with 2, 4, 6 or 8 Shapes use a balanced centre pair: the two
 highest-backed faces have the same size and overlap like the two-Shape pack, while lower-backed
 faces fill matched left and right outer positions. The pair and its spacing scale together as
-more faces are added. Three Shapes keep the hero spacing. Odd counts from five onward and counts
+more faces are added; the outer cards use 41.25% of the front-card width per step, 25% shorter
+than the previous 55% step. Three Shapes keep the hero spacing. Odd counts from five onward and counts
 of ten or more use 75% of the initial preview's centre spacing, with the highest-backed Shape
 centred in front and the rest alternating right and left. The highest-backed face is always
 drawn on top. Equal backing is ordered by ascending token id. Up to eleven real Shape faces are

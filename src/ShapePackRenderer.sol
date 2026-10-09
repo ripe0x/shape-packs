@@ -254,7 +254,7 @@ contract ShapePackRenderer is IShapePackRenderer, IERC165 {
     }
 
     /// @dev Keep the two-card pair's width-to-spacing ratio at every even size. The
-    ///      outer pairs mirror each other and shrink together to fit the canvas.
+    ///      outer pairs mirror each other at 75% of their former spacing.
     function _evenSlot(uint256 rank, uint256 n) private pure returns (CardSlot memory slot) {
         uint256 pairs = n / 2;
         uint256 frontWidth =
@@ -265,7 +265,8 @@ contract ShapePackRenderer is IShapePackRenderer, IERC165 {
         else if (pair == 1) slot.width = frontWidth * 75 / 100;
         else slot.width = frontWidth * 58 / 100;
         slot.height = slot.width * 7 / 5;
-        uint256 offset = frontWidth * 570 / 1450 + pair * frontWidth * 55 / 100;
+        uint256 outerStep = frontWidth * 165 / 400;
+        uint256 offset = frontWidth * 570 / 1450 + pair * outerStep;
         slot.x = right ? CENTER + offset - slot.width / 2 : CENTER - offset - slot.width / 2;
         slot.y = (CANVAS + frontWidth * 7 / 5) / 2 - slot.height;
         if (pair == 0) slot.angle = right ? "5" : "-5";

@@ -346,14 +346,14 @@ contract MetadataTest is MetadataHelpers {
             '<g transform="translate(1841,1403) rotate(5 369 516)"'
         ];
         string[3] memory leftOuters = [
-            '<g transform="translate(199,1462) rotate(-11 490 686)"',
-            '<g transform="translate(199,1812) rotate(-9 280 392)"',
-            '<g transform="translate(199,1837) rotate(-7 214 299)"'
+            '<g transform="translate(378,1462) rotate(-11 490 686)"',
+            '<g transform="translate(465,1812) rotate(-9 280 392)"',
+            '<g transform="translate(504,1837) rotate(-7 214 299)"'
         ];
         string[3] memory rightOuters = [
-            '<g transform="translate(2661,1462) rotate(9 490 686)"',
-            '<g transform="translate(3081,1812) rotate(7 280 392)"',
-            '<g transform="translate(3213,1837) rotate(5 214 299)"'
+            '<g transform="translate(2482,1462) rotate(9 490 686)"',
+            '<g transform="translate(2815,1812) rotate(7 280 392)"',
+            '<g transform="translate(2908,1837) rotate(5 214 299)"'
         ];
         for (uint256 i = 0; i < sizes.length; ++i) {
             string memory svg = svgOfPack(createFor(alice, noIds(), mintsOf(0, sizes[i])));
@@ -363,6 +363,22 @@ contract MetadataTest is MetadataHelpers {
             uint256 leftAt = indexOf(svg, leftCentres[i]);
             assertTrue(rightAt != type(uint256).max && leftAt != type(uint256).max, "balanced centre pair");
             assertLt(rightAt, leftAt, "highest-backed centre card drawn last");
+            if (sizes[i] == 6) {
+                assertTrue(
+                    contains(svg, '<g transform="translate(781,1583) rotate(-11 362 506)"'), "inner left"
+                );
+                assertTrue(
+                    contains(svg, '<g transform="translate(2335,1583) rotate(9 362 506)"'), "inner right"
+                );
+            }
+            if (sizes[i] == 8) {
+                assertTrue(
+                    contains(svg, '<g transform="translate(1050,1662) rotate(-11 276 387)"'), "inner left"
+                );
+                assertTrue(
+                    contains(svg, '<g transform="translate(2238,1662) rotate(9 276 387)"'), "inner right"
+                );
+            }
         }
     }
 

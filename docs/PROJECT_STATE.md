@@ -7,8 +7,9 @@ Product rules: [DESIGN.md](../DESIGN.md) and [SECURITY.md](../SECURITY.md)
 Launch status: Existing Sepolia contracts remain live; replacement contracts are not deployed
 
 The redesign draws up to eleven actual Shape faces on a transparent canvas, ordered by redeemable
-backing with token-id ties. Packs with 2, 4, 6 or 8 Shapes use a scaled two-card centre with smaller faces distributed
-in matched left and right pairs. Odd counts and counts of ten or more retain a single highest-value
+backing with token-id ties. Packs with 2, 4, 6 or 8 Shapes use a scaled two-card centre with smaller
+faces distributed in matched left and right pairs. The outer step is 25% tighter, while the centre
+pair stays in place. Odd counts and counts of ten or more retain a single highest-value
 face centred in front, using the Draw Shapes hero's size and tilt steps. Three Shapes retain the
 hero spacing; other single-centre fans use 75% of the initial preview's centre spacing.
 The contractURI uses the same layout with three illustrative faces. Rendered

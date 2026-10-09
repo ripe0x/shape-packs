@@ -4,6 +4,7 @@
 import json
 import os
 import pathlib
+import re
 import sys
 import tempfile
 import time
@@ -16,6 +17,12 @@ def address(value):
     if number == 0 or number >= 2**160:
         raise ValueError(f"invalid address: {value}")
     return f"0x{number:040x}"
+
+
+def deployment_path(chain_id, label=""):
+    if label and not re.fullmatch(r"[a-zA-Z0-9][a-zA-Z0-9_-]*", label):
+        raise ValueError("invalid deployment label")
+    return pathlib.Path(f"deployments/{chain_id}{'-' + label if label else ''}.json")
 
 
 def rpc(url, method, params):
@@ -49,7 +56,8 @@ def call_address(url, target, selector):
     return address(hex(call_uint(url, target, selector)))
 
 
-def record(chain_id, url, shapes_input, admin_input):
+def record(chain_id, url, shapes_input, admin_input, label=""):
+    path = deployment_path(chain_id, label)
     if int(rpc(url, "eth_chainId", []), 16) != chain_id:
         raise RuntimeError("RPC chain id changed during deployment")
 
@@ -108,7 +116,6 @@ def record(chain_id, url, shapes_input, admin_input):
         "deployer": deployer,
         "blockNumber": max(int(item["blockNumber"], 16) for item in receipts.values()),
     }
-    path = pathlib.Path(f"deployments/{chain_id}.json")
     temporary = None
     try:
         with tempfile.NamedTemporaryFile("w", dir=path.parent, prefix=".deployment-", delete=False) as out:
@@ -123,7 +130,7 @@ def record(chain_id, url, shapes_input, admin_input):
 
 if __name__ == "__main__":
     try:
-        record(int(sys.argv[1]), sys.argv[2], sys.argv[3], sys.argv[4])
+        record(int(sys.argv[1]), sys.argv[2], sys.argv[3], sys.argv[4], sys.argv[5] if len(sys.argv) > 5 else "")
     except (IndexError, KeyError, OSError, RuntimeError, ValueError) as exc:
         print(f"deployment readback failed: {exc}", file=sys.stderr)
         sys.exit(1)

@@ -31,6 +31,15 @@ esac
 
 cd "$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 
+# Public-chain deployments must use the primary checkout on main, never a linked worktree.
+if [ "$TARGET" != "anvil" ]; then
+  if [ "$(git branch --show-current)" != "main" ] \
+    || [ "$(git rev-parse --path-format=absolute --git-dir)" != "$(git rev-parse --path-format=absolute --git-common-dir)" ]; then
+    echo "refusing: $TARGET deploys require the primary main checkout" >&2
+    exit 1
+  fi
+fi
+
 # A caller's exports win over the env file.
 CALLER_SHAPES="${SHAPES-}"
 CALLER_ADMIN="${ADMIN-}"

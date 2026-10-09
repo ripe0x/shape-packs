@@ -246,7 +246,10 @@ contract ShapePackRenderer is IShapePackRenderer, IERC165 {
         uint256 pair = (rank + 1) / 2;
         slot.width = frontWidth * (pair == 1 ? 75 : 58) / 100;
         slot.height = slot.width * 7 / 5;
-        uint256 offset = pair * frontWidth * stepPercent * (pairs == 1 ? 4 : 3) / 400;
+        uint256 firstStep = frontWidth * stepPercent * (pairs == 1 ? 4 : 3) / 400;
+        uint256 offset = firstStep;
+        if (pair > 1) offset += firstStep * 9 / 16;
+        if (pair > 2) offset += (pair - 2) * firstStep;
         bool right = rank % 2 == 1;
         slot.x = right ? CENTER + offset - slot.width / 2 : CENTER - offset - slot.width / 2;
         slot.y = baseline - slot.height;
@@ -254,7 +257,8 @@ contract ShapePackRenderer is IShapePackRenderer, IERC165 {
     }
 
     /// @dev Keep the two-card pair's width-to-spacing ratio at every even size. The
-    ///      first outer pair stays put; farther pairs use 75% of that step.
+    ///      first outer pair stays put; the gap into tier three uses 56.25% of that
+    ///      step, then later gaps retain their previous spacing.
     function _evenSlot(uint256 rank, uint256 n) private pure returns (CardSlot memory slot) {
         uint256 pairs = n / 2;
         uint256 frontWidth =
@@ -269,7 +273,8 @@ contract ShapePackRenderer is IShapePackRenderer, IERC165 {
         uint256 offset = frontWidth * 570 / 1450;
         if (pair != 0) {
             offset += outerStep;
-            if (pair > 1) offset += (pair - 1) * outerStep * 3 / 4;
+            if (pair > 1) offset += outerStep * 9 / 16;
+            if (pair > 2) offset += (pair - 2) * (outerStep * 3 / 4);
         }
         slot.x = right ? CENTER + offset - slot.width / 2 : CENTER - offset - slot.width / 2;
         slot.y = (CANVAS + frontWidth * 7 / 5) / 2 - slot.height;

@@ -329,8 +329,30 @@ contract MetadataTest is MetadataHelpers {
         string memory svg = svgOfPack(packId);
         assertTrue(contains(svg, '<g transform="translate(1968,1467) rotate(9 485 679)"'), "inner right");
         assertTrue(contains(svg, '<g transform="translate(902,1467) rotate(-11 485 679)"'), "inner left");
-        assertTrue(contains(svg, '<g transform="translate(2612,1775) rotate(7 375 525)"'), "outer right");
-        assertTrue(contains(svg, '<g transform="translate(478,1775) rotate(-9 375 525)"'), "outer left");
+        assertTrue(contains(svg, '<g transform="translate(2377,1775) rotate(7 375 525)"'), "outer right");
+        assertTrue(contains(svg, '<g transform="translate(713,1775) rotate(-9 375 525)"'), "outer left");
+    }
+
+    function test_ThirdTierTightAcrossSingleCentreFans() public {
+        uint32[5] memory sizes = [uint32(7), 9, 10, 11, 12];
+        string[5] memory leftThirds = [
+            '<g transform="translate(1042,1809) rotate(-9 291 407)"',
+            '<g transform="translate(1218,1824) rotate(-9 249 349)"',
+            '<g transform="translate(1326,1833) rotate(-9 227 318)"',
+            '<g transform="translate(1326,1833) rotate(-9 227 318)"',
+            '<g transform="translate(1326,1833) rotate(-9 227 318)"'
+        ];
+        string[5] memory rightThirds = [
+            '<g transform="translate(2216,1809) rotate(7 291 407)"',
+            '<g transform="translate(2124,1824) rotate(7 249 349)"',
+            '<g transform="translate(2060,1833) rotate(7 227 318)"',
+            '<g transform="translate(2060,1833) rotate(7 227 318)"',
+            '<g transform="translate(2060,1833) rotate(7 227 318)"'
+        ];
+        for (uint256 i = 0; i < sizes.length; ++i) {
+            string memory svg = svgOfPack(createFor(alice, noIds(), mintsOf(0, sizes[i])));
+            assertTrue(contains(svg, leftThirds[i]) && contains(svg, rightThirds[i]), "tight third tier");
+        }
     }
 
     function test_EvenPacksThroughEightUseBalancedPairs() public {
@@ -347,13 +369,13 @@ contract MetadataTest is MetadataHelpers {
         ];
         string[3] memory leftOuters = [
             '<g transform="translate(378,1462) rotate(-11 490 686)"',
-            '<g transform="translate(565,1812) rotate(-9 280 392)"',
-            '<g transform="translate(656,1837) rotate(-7 214 299)"'
+            '<g transform="translate(640,1812) rotate(-9 280 392)"',
+            '<g transform="translate(713,1837) rotate(-7 214 299)"'
         ];
         string[3] memory rightOuters = [
             '<g transform="translate(2482,1462) rotate(9 490 686)"',
-            '<g transform="translate(2715,1812) rotate(7 280 392)"',
-            '<g transform="translate(2756,1837) rotate(5 214 299)"'
+            '<g transform="translate(2640,1812) rotate(7 280 392)"',
+            '<g transform="translate(2699,1837) rotate(5 214 299)"'
         ];
         for (uint256 i = 0; i < sizes.length; ++i) {
             string memory svg = svgOfPack(createFor(alice, noIds(), mintsOf(0, sizes[i])));
@@ -379,10 +401,10 @@ contract MetadataTest is MetadataHelpers {
                     contains(svg, '<g transform="translate(2238,1662) rotate(9 276 387)"'), "inner right"
                 );
                 assertTrue(
-                    contains(svg, '<g transform="translate(884,1837) rotate(-9 214 299)"'), "second left"
+                    contains(svg, '<g transform="translate(941,1837) rotate(-9 214 299)"'), "second left"
                 );
                 assertTrue(
-                    contains(svg, '<g transform="translate(2528,1837) rotate(7 214 299)"'), "second right"
+                    contains(svg, '<g transform="translate(2471,1837) rotate(7 214 299)"'), "second right"
                 );
             }
         }

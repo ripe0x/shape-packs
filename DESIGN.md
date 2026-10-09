@@ -376,10 +376,11 @@ size steps and easing tilt. Packs with 2, 4, 6 or 8 Shapes use a balanced centre
 highest-backed faces have the same size and overlap like the two-Shape pack, while lower-backed
 faces fill matched left and right outer positions. The pair and its spacing scale together as
 more faces are added. The first smaller pair sits 41.25% of the front-card width beyond the
-centre pair; each farther pair uses a step 25% shorter than that first step. Three Shapes keep
-the hero spacing. Odd counts from five onward and counts
-of ten or more use 75% of the initial preview's centre spacing, with the highest-backed Shape
-centred in front and the rest alternating right and left. The highest-backed face is always
+centre pair. Three Shapes keep the hero spacing. Odd counts from five onward and counts of ten
+or more use 75% of the initial preview's first centre step, with the highest-backed Shape
+centred in front and the rest alternating right and left. In every fan, the gap into the third
+tier is 56.25% of its first side step. Farther tiers shift inward with it while retaining their
+spacing from each other. The highest-backed face is always
 drawn on top. Equal backing is ordered by ascending token id. Up to eleven real Shape faces are
 drawn; if a pack is larger, these are its eleven highest-backed Shapes and the full count and
 makeup remain in metadata. This display sort never changes custody or contents order. The renderer

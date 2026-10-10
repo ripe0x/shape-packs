@@ -500,7 +500,8 @@ and checks `shapes()`, `MIN_PACK_VALUE()` (asserting `3 * unit()`), `renderer()`
 simulation. After broadcast, the wrapper repeats those checks against live receipts and code before
 writing `deployments/<chainId>.json`. Sepolia first against the Sepolia Shapes, then mainnet
 against `0x6fe9…faf0`. Presentation is left unlocked at launch, as Shapes' was, and locked once
-the art is final.
+the art is final. The initial mainnet presentation admin is `ripe0x`
+(`0xcb43078c32423f5348cab5885911c3b5fae217f9`), as chosen by the owner.
 
 ### Site and indexer
 

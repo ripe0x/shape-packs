@@ -146,8 +146,8 @@ contract ShapePacks is ERC721, IShapePacks, IERC2981, IERC721Receiver, Reentranc
     }
 
     /// @inheritdoc IShapePacks
-    /// @dev Every source is already in this contract's custody. Burn only its pack token, then
-    ///      reassign each Shape to the target; there is no Shapes call or receiver callback.
+    /// @dev Every source is already in this contract's custody. Reassign its Shapes to the target,
+    ///      then burn its pack token; there is no Shapes call or receiver callback.
     function mergePacks(uint256 targetPackId, uint256[] calldata sourcePackIds) external nonReentrant {
         if (sourcePackIds.length == 0) revert NoSourcePacks();
         _requireOwner(targetPackId);

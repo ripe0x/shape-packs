@@ -298,6 +298,20 @@ Sepolia has Glamsterdam's higher code-deposit cost. The env file sets a 1000% ga
 multiplier because this Foundry build simulates Cancun costs. The transactions are sent
 sequentially so a failed renderer creation cannot be followed by a packs creation.
 
+To mint the six sample packs of 1, 2, 3, 6, 9 and 12 Shapes into the v3 Sepolia collection,
+run from the clean primary `main` checkout:
+
+```sh
+DRY_RUN=1 script/mint_v3_samples.sh # optional read-only rehearsal
+script/mint_v3_samples.sh           # prompts for the ripe0x keystore password
+```
+
+The wrapper includes `forge clean`, Tenderly's public Sepolia RPC, sequential receipts and a
+1000% gas-estimate multiplier. This matters for mint execution too: a prior first mint reverted
+with a 604,025 gas limit; Tenderly estimated 1,753,633 gas for the same call. The wrapper refuses
+to rebroadcast after any pack is minted. If a broadcast fails, inspect its receipts and live pack
+count before retrying.
+
 | Variable | Meaning |
 | --- | --- |
 | `RPC_URL` | RPC endpoint. Sepolia and mainnet default to Tenderly's public RPC URLs. |

@@ -1,7 +1,7 @@
 # Project state
 
 Objective: Add owner-only atomic merging of live Shape Packs into a surviving target pack.
-Phase: Contract implementation, Daybreak review, and Sepolia v4 dry run complete; broadcast pending.
+Phase: Sepolia v4 deployed with successful receipts; sample mint and source verification pending.
 Candidate: `de77ce4` (merge) plus `81381c5` (chunked-exit test) on primary `main`.
 Product rules: [DESIGN.md](../DESIGN.md), [SECURITY.md](../SECURITY.md), and [pack merge specification](PACK_MERGE_PROPOSAL.md).
 
@@ -29,16 +29,15 @@ On October 10, 2026, the user ran the v4 Sepolia deployment dry run from the pri
 creation transactions on chain 11155111, for the renderer and collection, and no
 receipts, as expected without broadcast. The script estimated 63,306,910 gas total
 across the two transactions and 0.0000648914819573 ETH at its sampled fees. Its
-constructor readback assertions passed. No v4 manifest or broadcast exists yet.
+constructor readback assertions passed. At that stage, no v4 manifest or broadcast existed.
 
-External state: Sepolia v3 is recorded in `deployments/11155111-v3.json`. ShapePacks is
-`0xd1cfc13abcbb370d381ac192aeb6f2e1b414022a` and ShapePackRenderer is
-`0xfef50a388bde6b222c6f5fecafe590bf561c8bda`. Creation receipts and constructor readbacks
-were verified, and the exact-input source preflight matched both creations. Source submission was
-still pending in the last recorded project state. The v3 collection has no merge function and
-cannot be upgraded. The new source has not been deployed or source-verified onchain. Existing
-packs can be opened or claimed and their Shapes moved into a new collection, but a new collection
-cannot directly merge old pack tokens.
+External state: Sepolia v4 is recorded in `deployments/11155111-v4.json` at block 11886596.
+ShapePacks is `0x6db763fb3fa5b988beda8e7a4288c79d7e1e6f45` and ShapePackRenderer is
+`0xbfa47d2047d61ae8eaa685008e1272e4f9d6ea60`. Both saved creation receipts have success
+status and addresses matching the manifest; the deployment wrapper recorded constructor readbacks.
+The v4 source has not yet been submitted or verified on Etherscan. The earlier Sepolia v3 collection
+is recorded in `deployments/11155111-v3.json`; it has no merge function and cannot be upgraded.
+Old pack tokens cannot directly merge into v4. Users can exit old packs and move their Shapes.
 
 Deployment rules: The user runs all public-chain transactions from the clean primary `main`
 checkout with Tenderly's public RPC and `forge clean` in deployment paths. Treat broadcast,
@@ -47,6 +46,8 @@ error. The verifier compares full creation inputs built from one deployment comp
 submits only Solidity Standard JSON keys. The earlier renderer mismatch and unsupported
 `allowPaths` submission were explorer verification failures after successful broadcasts.
 
-Next: the user broadcasts v4 from clean primary `main`, then checks receipts/readbacks
-and separately verifies source. Update event consumers and the website merge flow before
-a product release. Do not present this implementation as deployed.
+Next: the user dry-runs and then mints six sample packs into v4 using
+`script/mint_samples.sh v4` from clean primary `main`. The script reads the committed v4 manifest,
+checks the collection is empty, and uses the `ripe0x` keystore for broadcast. Separately, run the
+exact-input source preflight before Etherscan submission. Update event consumers and the website
+merge flow before a product release.

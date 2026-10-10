@@ -1,7 +1,7 @@
 # Project state
 
 Objective: Add owner-only atomic merging of live Shape Packs into a surviving target pack.
-Phase: Sepolia v4 minted and multi-pack merge confirmed; ShapePacks source verification and mainnet rehearsal pending.
+Phase: Sepolia v4 minted and multi-pack merge confirmed; mainnet rehearsal pending.
 Candidate: `de77ce4` (merge) plus `81381c5` (chunked-exit test) on primary `main`.
 Product rules: [DESIGN.md](../DESIGN.md), [SECURITY.md](../SECURITY.md), and [pack merge specification](PACK_MERGE_PROPOSAL.md).
 
@@ -35,8 +35,8 @@ External state: Sepolia v4 is recorded in `deployments/11155111-v4.json` at bloc
 ShapePacks is `0x6db763fb3fa5b988beda8e7a4288c79d7e1e6f45` and ShapePackRenderer is
 `0xbfa47d2047d61ae8eaa685008e1272e4f9d6ea60`. Both saved creation receipts have success
 status and addresses matching the manifest; the deployment wrapper recorded constructor readbacks.
-The renderer source is verified on Etherscan; ShapePacks source verification remains
-pending. The earlier Sepolia v3 collection is recorded in `deployments/11155111-v3.json`; it has no merge function and cannot be upgraded.
+The owner reports both v4 contracts verified on Sepolia Etherscan. The earlier Sepolia v3
+collection is recorded in `deployments/11155111-v3.json`; it has no merge function and cannot be upgraded.
 Old pack tokens cannot directly merge into v4. Users can exit old packs and move their Shapes.
 
 Six sample creation receipts succeeded, minting pack IDs 1 through 6 to `ripe0x`. Sepolia
@@ -44,8 +44,8 @@ transaction `0x771a010de68ef63d38ef971f0509941a72db51064182b0828c9703f486032823`
 succeeded and emitted three `PackMerged` events: sources 5, 3 and 2 joined target 6. Live reads
 show supply 3; target 6 holds 26 Shapes and 0.0069 ETH backing. Read-only Sepolia gas estimates
 of `open(6)` and `redeem(6)` succeeded at 1,304,082 and 2,099,703 gas, respectively; neither
-exit was broadcast. The renderer's public Etherscan page shows verified source; the ShapePacks
-page still offers source submission. The verifier's 11 local regression tests passed on current `main`.
+exit was broadcast. The owner confirmed both Sepolia v4 contracts are source verified. The verifier's 11 local
+regression tests passed on current `main`.
 
 The mainnet Shapes fork lifecycle test passed against Tenderly's public mainnet RPC on current
 `main`. It covers creation, addition and redemption against live Shapes, not merge. The Sepolia
@@ -62,8 +62,7 @@ error. The verifier compares full creation inputs built from one deployment comp
 submits only Solidity Standard JSON keys. The earlier renderer mismatch and unsupported
 `allowPaths` submission were explorer verification failures after successful broadcasts.
 
-Next: the user runs the read-only exact-input Sepolia v4 verification preflight, then submits
-source after its match is confirmed. Run the keyless mainnet deployment dry run from clean primary
+Next: run the keyless mainnet deployment dry run from clean primary
 `main` with `forge clean`, then `CONFIRM_MAINNET=yes DRY_RUN=1 script/deploy.sh mainnet`.
 Inspect its gas, fee, address, and constructor readback outputs before any broadcast. Update event
 consumers and the website merge flow before a public product release.

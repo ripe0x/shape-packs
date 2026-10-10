@@ -292,6 +292,10 @@ Run public-chain targets from the clean primary checkout on `main`; the wrapper 
 worktrees, dirty checkouts and other branches.
 The wrapper pins Tenderly's public RPC and Foundry's `default` profile on public chains so the
 later source-verification build uses the same inputs.
+Public-chain dry runs use the configured `ripe0x` public address and need no keystore password.
+Before every public-chain broadcast, the wrapper first simulates without a key, prints Foundry's
+gas and fee estimate, and stops if no estimate appears. Only then does it request the keystore.
+The estimate is a snapshot; network fees can change before the signed transactions land.
 The wrapper refuses to overwrite an existing deployment manifest. For a deliberate new generation,
 set `DEPLOYMENT_LABEL` (for example `v3`); it archives the prior broadcast and records an immutable
 snapshot for later verification. An interrupted attempt must be reconciled before another broadcast.
@@ -339,9 +343,10 @@ inspect its receipts and live pack count before retrying.
 | `ADMIN` | Presentation admin. Defaults to the broadcaster when empty. |
 | `PRIVATE_KEY` | Signer for `sepolia` and `mainnet`... |
 | `KEYSTORE_ACCOUNT` | ...or the name of a foundry keystore under `~/.foundry/keystores` (password prompt, or `KEYSTORE_PASSWORD_FILE`). |
+| `SIMULATED_SENDER` | Public signer address for the keyless gas rehearsal; defaults to `ripe0x` and must match the broadcast signer. |
 | `ETHERSCAN_API_KEY` | Separate source-verification step on `sepolia` and `mainnet`. |
 | `DEPLOYMENT_LABEL` | New deployment generation, such as `v3`; preserves the previous record and broadcast. |
-| `DRY_RUN=1` | Simulate only: no `--broadcast`, nothing written. |
+| `DRY_RUN=1` | Simulate without a keystore: no broadcast or deployment manifest; Foundry may save a dry-run artifact. |
 | `CONFIRM_MAINNET=yes` | Required to run `mainnet` at all, dry run included. |
 
 `anvil` needs no key: it uses anvil's well-known account 0. Its env file leaves `SHAPES` empty,

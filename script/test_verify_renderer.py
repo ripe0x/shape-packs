@@ -93,7 +93,16 @@ class VerificationInputTest(unittest.TestCase):
             stubs = {
                 "git": '#!/bin/sh\nif [ "$1" = branch ]; then echo main; elif [ "$1" = status ]; then :; else echo /mock/git; fi\n',
                 "cast": "#!/bin/sh\necho 11155111\n",
-                "forge": '#!/bin/sh\nif [ "$1" = script ]; then echo "new broadcast" > broadcast/Deploy.s.sol/11155111/run-latest.json; fi\n',
+                "forge": (
+                    '#!/bin/sh\n'
+                    'if [ "$1" = script ]; then\n'
+                    '  echo "$*" >> forge.calls\n'
+                    '  case " $* " in\n'
+                    '    *" --broadcast "*) echo "new broadcast" > broadcast/Deploy.s.sol/11155111/run-latest.json ;;\n'
+                    '    *) echo "Estimated amount required: 0.01 ETH" ;;\n'
+                    '  esac\n'
+                    'fi\n'
+                ),
                 "python3": '#!/bin/sh\ncp broadcast/Deploy.s.sol/11155111/run-latest.json "broadcast/Deploy.s.sol/11155111/snapshot-$6.json"\necho "new manifest" > "deployments/11155111-$6.json"\n',
             }
             for name, source in stubs.items():
@@ -108,6 +117,19 @@ class VerificationInputTest(unittest.TestCase):
             )
             env.pop("RPC_URL", None)
             env.pop("FOUNDRY_PROFILE", None)
+            dry_env = dict(env, DRY_RUN="1")
+            dry_env.pop("KEYSTORE_ACCOUNT")
+            dry = subprocess.run(
+                ["bash", "script/deploy.sh", "sepolia"],
+                cwd=root,
+                env=dry_env,
+                text=True,
+                capture_output=True,
+                check=False,
+            )
+            self.assertEqual(dry.returncode, 0, dry.stderr)
+            self.assertIn("Estimated amount required: 0.01 ETH", dry.stdout)
+            self.assertFalse((broadcast / "run-latest.json").read_text() == "new broadcast\n")
             result = subprocess.run(
                 ["bash", "script/deploy.sh", "sepolia"],
                 cwd=root,
@@ -117,6 +139,13 @@ class VerificationInputTest(unittest.TestCase):
                 check=False,
             )
             self.assertEqual(result.returncode, 0, result.stderr)
+            self.assertLess(result.stdout.index("Estimated amount required"), result.stdout.index("keystore prompt follows"))
+            calls = (root / "forge.calls").read_text().splitlines()
+            self.assertIn("--sender 0xcb43078c32423f5348cab5885911c3b5fae217f9", calls[0])
+            self.assertIn("--sender 0xcb43078c32423f5348cab5885911c3b5fae217f9", calls[1])
+            self.assertNotIn("--account", calls[1])
+            self.assertIn("--account ripe0x", calls[2])
+            self.assertIn("--broadcast", calls[2])
             self.assertEqual((root / "deployments/11155111.json").read_text(), "old manifest")
             self.assertEqual((root / "deployments/11155111-v2.json").read_text(), "new manifest\n")
             self.assertEqual((broadcast / "run-before-v2.json").read_text(), "old broadcast")
@@ -137,6 +166,50 @@ class VerificationInputTest(unittest.TestCase):
             self.assertNotEqual(retry.returncode, 0)
             self.assertIn("v2 marks a prior deployment attempt", retry.stderr)
             self.assertFalse((broadcast / "run-latest.json").exists())
+
+    def test_mainnet_rehearses_without_keystore_and_requires_fee_output(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root = pathlib.Path(temp)
+            (root / "script/env").mkdir(parents=True)
+            shutil.copy(pathlib.Path(__file__).parent / "deploy.sh", root / "script/deploy.sh")
+            shutil.copy(pathlib.Path(__file__).parent / "env/mainnet.env", root / "script/env/mainnet.env")
+            bin_dir = root / "bin"
+            bin_dir.mkdir()
+            stubs = {
+                "git": '#!/bin/sh\nif [ "$1" = branch ]; then echo main; elif [ "$1" = status ]; then :; else echo /mock/git; fi\n',
+                "cast": "#!/bin/sh\necho 1\n",
+                "forge": (
+                    '#!/bin/sh\n'
+                    'if [ "$1" = script ]; then\n'
+                    '  echo "$*" >> forge.calls\n'
+                    '  [ "${FAKE_NO_FEE:-0}" = 1 ] || echo "Estimated amount required: 0.1 ETH"\n'
+                    'fi\n'
+                ),
+            }
+            for name, source in stubs.items():
+                executable = bin_dir / name
+                executable.write_text(source)
+                executable.chmod(0o755)
+            env = dict(os.environ, PATH=f"{bin_dir}:{os.environ['PATH']}", CONFIRM_MAINNET="yes", DRY_RUN="1")
+            for key in ("PRIVATE_KEY", "KEYSTORE_ACCOUNT", "RPC_URL", "FOUNDRY_PROFILE"):
+                env.pop(key, None)
+            failed = subprocess.run(
+                ["bash", "script/deploy.sh", "mainnet"],
+                cwd=root, env=dict(env, FAKE_NO_FEE="1"), text=True, capture_output=True, check=False,
+            )
+            self.assertNotEqual(failed.returncode, 0)
+            self.assertIn("refusing to request the keystore", failed.stderr)
+            result = subprocess.run(
+                ["bash", "script/deploy.sh", "mainnet"],
+                cwd=root, env=env, text=True, capture_output=True, check=False,
+            )
+            self.assertEqual(result.returncode, 0, result.stderr)
+            self.assertIn("Estimated amount required: 0.1 ETH", result.stdout)
+            self.assertIn("admin=0xcb43078c32423f5348cab5885911c3b5fae217f9", result.stdout)
+            for call in (root / "forge.calls").read_text().splitlines():
+                self.assertIn("--sender 0xcb43078c32423f5348cab5885911c3b5fae217f9", call)
+                self.assertNotIn("--account", call)
+                self.assertNotIn("--broadcast", call)
 
     def _wrapper_with_stub_git(self, **overrides):
         root = pathlib.Path(__file__).parent.parent

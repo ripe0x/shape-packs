@@ -1,7 +1,7 @@
 # Project state
 
 Objective: Add owner-only atomic merging of live Shape Packs into a surviving target pack.
-Phase: Contract implementation and Daybreak security review complete on primary `main`; deployment rehearsal pending.
+Phase: Contract implementation, Daybreak review, and Sepolia v4 dry run complete; broadcast pending.
 Candidate: `de77ce4` (merge) plus `81381c5` (chunked-exit test) on primary `main`.
 Product rules: [DESIGN.md](../DESIGN.md), [SECURITY.md](../SECURITY.md), and [pack merge specification](PACK_MERGE_PROPOSAL.md).
 
@@ -24,6 +24,13 @@ events, and interface compatibility. It reports 232 passing tests on each Foundr
 profile. The review did not execute a public-chain transaction, fork, deployment, or
 source verification, and did not measure the gas limit for unusually large merges.
 
+On October 10, 2026, the user ran the v4 Sepolia deployment dry run from the primary
+`main` checkout. Forge reported `SIMULATION COMPLETE`. The saved artifact has two
+creation transactions on chain 11155111, for the renderer and collection, and no
+receipts, as expected without broadcast. The script estimated 63,306,910 gas total
+across the two transactions and 0.0000648914819573 ETH at its sampled fees. Its
+constructor readback assertions passed. No v4 manifest or broadcast exists yet.
+
 External state: Sepolia v3 is recorded in `deployments/11155111-v3.json`. ShapePacks is
 `0xd1cfc13abcbb370d381ac192aeb6f2e1b414022a` and ShapePackRenderer is
 `0xfef50a388bde6b222c6f5fecafe590bf561c8bda`. Creation receipts and constructor readbacks
@@ -40,6 +47,6 @@ error. The verifier compares full creation inputs built from one deployment comp
 submits only Solidity Standard JSON keys. The earlier renderer mismatch and unsupported
 `allowPaths` submission were explorer verification failures after successful broadcasts.
 
-Next: the user rehearses a fresh Sepolia deployment from clean primary `main`, then
-separately broadcasts, checks receipts/readbacks, and verifies source. Update event consumers and
-the website merge flow before a product release. Do not present this implementation as deployed.
+Next: the user broadcasts v4 from clean primary `main`, then checks receipts/readbacks
+and separately verifies source. Update event consumers and the website merge flow before
+a product release. Do not present this implementation as deployed.

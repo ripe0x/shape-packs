@@ -1,7 +1,7 @@
 # Project state
 
 Objective: Add owner-only atomic merging of live Shape Packs into a surviving target pack.
-Phase: Sepolia v4 deployed with successful receipts; sample mint and source verification pending.
+Phase: Sepolia v4 minted and multi-pack merge confirmed; source verification and mainnet rehearsal pending.
 Candidate: `de77ce4` (merge) plus `81381c5` (chunked-exit test) on primary `main`.
 Product rules: [DESIGN.md](../DESIGN.md), [SECURITY.md](../SECURITY.md), and [pack merge specification](PACK_MERGE_PROPOSAL.md).
 
@@ -39,6 +39,20 @@ The v4 source has not yet been submitted or verified on Etherscan. The earlier S
 is recorded in `deployments/11155111-v3.json`; it has no merge function and cannot be upgraded.
 Old pack tokens cannot directly merge into v4. Users can exit old packs and move their Shapes.
 
+Six sample creation receipts succeeded, minting pack IDs 1 through 6 to `ripe0x`. Sepolia
+transaction `0x771a010de68ef63d38ef971f0509941a72db51064182b0828c9703f486032823`
+succeeded and emitted three `PackMerged` events: sources 5, 3 and 2 joined target 6. Live reads
+show supply 3; target 6 holds 26 Shapes and 0.0069 ETH backing. Read-only Sepolia gas estimates
+of `open(6)` and `redeem(6)` succeeded at 1,304,082 and 2,099,703 gas, respectively; neither
+exit was broadcast. The renderer's public Etherscan page shows verified source; the ShapePacks
+page still offers source submission. The verifier's 10 local regression tests passed.
+
+The mainnet Shapes fork lifecycle test passed against Tenderly's public mainnet RPC on current
+`main`. It covers creation, addition and redemption against live Shapes, not merge. The Sepolia
+v4 multi-source merge above exercised the deployed merge implementation. Mainnet deployment
+configuration leaves `ADMIN` empty, so the broadcaster would become presentation admin; the
+owner should choose the intended admin before rehearsal.
+
 Deployment rules: The user runs all public-chain transactions from the clean primary `main`
 checkout with Tenderly's public RPC and `forge clean` in deployment paths. Treat broadcast,
 receipt/readback, and source verification as separate gates; never rebroadcast to fix an explorer
@@ -46,8 +60,7 @@ error. The verifier compares full creation inputs built from one deployment comp
 submits only Solidity Standard JSON keys. The earlier renderer mismatch and unsupported
 `allowPaths` submission were explorer verification failures after successful broadcasts.
 
-Next: the user dry-runs and then mints six sample packs into v4 using
-`script/mint_samples.sh v4` from clean primary `main`. The script reads the committed v4 manifest,
-checks the collection is empty, and uses the `ripe0x` keystore for broadcast. Separately, run the
-exact-input source preflight before Etherscan submission. Update event consumers and the website
-merge flow before a product release.
+Next: the user runs the read-only exact-input Sepolia v4 verification preflight, then submits
+source after its match is confirmed. Resolve mainnet presentation admin, run the exact mainnet
+deployment dry run from clean primary `main`, and inspect its outputs before broadcast. Update
+event consumers and the website merge flow before a public product release.

@@ -42,7 +42,7 @@ right to exit.
 Shape, and a packed Shape cannot become Black. A packed Shape's compose stack cannot be unwound while
 packed; after `open` its new holder can.
 
-**Invariants** (stateful fuzz over create, add, transfer, open, redeem, unseal, claim, claimEth,
+**Invariants** (stateful fuzz over create, add, merge, transfer, open, redeem, unseal, claim, claimEth,
 forced ETH and raw pokes):
 
 ```
@@ -58,6 +58,11 @@ I5  every Shape owned by address(packs) is in exactly one live pack's contents o
 I6  a pack id is never reissued; totalMinted only grows; totalSupply == live packs
 I7  for every unsealed pack p with remaining Shapes, claimantOf(p) != 0 and exists(p) == false
 ```
+
+`mergePacks` is owner-only for every pack named. It burns each source pack and moves its Shape IDs
+to the still-live target without a Shape transfer or external call. The target only grows, while a
+burned source no longer has the live-pack prefix guarantee. Large merges can exceed block gas; the
+owner can unseal and claim a source in chunks before adding those Shapes to the target in chunks.
 
 ---
 

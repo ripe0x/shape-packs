@@ -9,7 +9,7 @@ import {Shapes} from "shapes/Shapes.sol";
 import {ShapePacks} from "../src/ShapePacks.sol";
 import {PacksTest} from "./utils/PacksTest.sol";
 
-/// @notice Drives arbitrary sequences of pack creation (minted, pulled, mixed), extension, transfer,
+/// @notice Drives arbitrary sequences of pack creation (minted, pulled, mixed), extension, merge, transfer,
 ///         every exit (open, openTo, redeem, redeemTo, unseal, claim, claimEth), forced ETH, Shapes
 ///         pushed in by plain `transferFrom`, refused `safeTransferFrom`s and raw calldata, while
 ///         keeping its own ghost view of what the contract must say.
@@ -338,6 +338,32 @@ contract PacksHandler is Test {
         _afterOp();
     }
 
+    function mergePacks(uint256 seed) public {
+        if (live.length < 2) return;
+        uint256 target = live[seed % live.length];
+        address owner = packs.ownerOf(target);
+        uint256 source;
+        for (uint256 i = 0; i < live.length; ++i) {
+            uint256 candidate = live[(seed + i + 1) % live.length];
+            if (candidate != target && packs.ownerOf(candidate) == owner) {
+                source = candidate;
+                break;
+            }
+        }
+        if (source == 0) return;
+
+        uint256[] memory sources = new uint256[](1);
+        sources[0] = source;
+        vm.prank(owner);
+        try packs.mergePacks(target, sources) {
+            _hit("merge", true);
+            _removeLive(source);
+        } catch {
+            _hit("merge", false);
+        }
+        _afterOp();
+    }
+
     function transferPack(uint256 seed) public {
         (bool ok, uint256 id) = _pickLive(seed);
         if (!ok) return;
@@ -557,7 +583,7 @@ contract PacksInvariantTest is StdInvariant, PacksTest {
         handler = new PacksHandler(packs, shapes);
 
         targetContract(address(handler));
-        bytes4[] memory selectors = new bytes4[](15);
+        bytes4[] memory selectors = new bytes4[](16);
         selectors[0] = PacksHandler.createPackMinted.selector;
         selectors[1] = PacksHandler.createPackPulled.selector;
         selectors[2] = PacksHandler.createPackMixed.selector;
@@ -573,6 +599,7 @@ contract PacksInvariantTest is StdInvariant, PacksTest {
         selectors[12] = PacksHandler.strayTransferFrom.selector;
         selectors[13] = PacksHandler.poke.selector;
         selectors[14] = PacksHandler.pokeSafeTransfer.selector;
+        selectors[15] = PacksHandler.mergePacks.selector;
         targetSelector(FuzzSelector({addr: address(handler), selectors: selectors}));
     }
 
@@ -586,6 +613,7 @@ contract PacksInvariantTest is StdInvariant, PacksTest {
         handler.createPackMixed(2);
         handler.createPackPulled(3);
         handler.createPackPulled(2 << 24); // a composed survivor goes in
+        handler.createPackMinted(4);
         assertGt(handler.liveLength(), 0, "no pack created");
         bool sampled;
         for (uint256 k = 0; k < handler.liveLength(); ++k) {
@@ -598,12 +626,14 @@ contract PacksInvariantTest is StdInvariant, PacksTest {
         assertEq(packs.totalSupply(), handler.liveLength());
 
         handler.addToPack(0);
+        handler.mergePacks(0);
         handler.transferPack(1);
         handler.forceEth(7);
         handler.strayTransferFrom(2);
         handler.pokeSafeTransfer(4);
         handler.poke(0x12345678, "", 5);
         assertGt(handler.successes("add"), 0, "addToPack never succeeded");
+        assertGt(handler.successes("merge"), 0, "mergePacks never succeeded");
         assertGt(handler.successes("transfer"), 0, "transferPack never succeeded");
         assertGt(handler.successes("stray"), 0, "stray never recorded");
 

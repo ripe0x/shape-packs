@@ -52,6 +52,17 @@ interface IShapePacks is IERC721, IERC721Value {
         uint256 valueWei
     );
 
+    /// @notice A live source pack was burned and its Shapes joined the live target. `shapeIds`
+    ///         lists the moved Shapes in their former source order; `valueWei` is the new target total.
+    event PackMerged(
+        uint256 indexed targetPackId,
+        uint256 indexed sourcePackId,
+        address indexed by,
+        uint256[] shapeIds,
+        uint256 addedValueWei,
+        uint256 valueWei
+    );
+
     /// @notice The pack token was burned; `count` Shapes remain as `claimant`'s claim. Emitted
     ///         by every exit path, single-transaction or chunked.
     event PackUnsealed(
@@ -80,6 +91,10 @@ interface IShapePacks is IERC721, IERC721Value {
 
     /// @notice A creation or addition named no Shape to pull and none to mint.
     error NoShapes();
+    /// @notice A merge named no source packs.
+    error NoSourcePacks();
+    /// @notice A pack cannot be merged into itself.
+    error CannotMergePackIntoItself(uint256 packId);
     /// @notice `mintCounts.length` is not the Shapes denomination count.
     error MakeupLengthMismatch();
     /// @notice `msg.value` is not exactly the cost of the requested mints.
@@ -143,6 +158,15 @@ interface IShapePacks is IERC721, IERC721Value {
     function addToPack(uint256 packId, uint256[] calldata shapeIds, uint32[] calldata mintCounts)
         external
         payable;
+
+    /// @notice Burns live source packs and appends their Shapes to a live target pack.
+    /// @dev Caller must own the target and every source; approval is not enough. Sources are
+    ///      processed in argument order, with each source's insertion order preserved. The target
+    ///      retains its id, owner, creator and minted count. Sources become neither claims nor ETH.
+    ///      No Shape changes custody and no payment is made. The entire call reverts on any error.
+    /// @param targetPackId The pack that remains live and receives the Shapes and backing value.
+    /// @param sourcePackIds Nonempty list of distinct live packs to burn; cannot contain the target.
+    function mergePacks(uint256 targetPackId, uint256[] calldata sourcePackIds) external;
 
     /// @notice Cost of a makeup, read live from Shapes.
     function quoteMint(uint32[] calldata mintCounts)

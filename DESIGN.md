@@ -6,11 +6,12 @@ repository, `shape-packs`, against the deployed mainnet `Shapes` at
 `0x6fe9193276bf7abcbee44ab7afd717d637d6faf0`. Shapes itself is not modified.
 
 This document is the specification the implementation was built from; it is kept in step with the
-code and also lives in the Shapes repository as `SHAPE_PACKS_DESIGN.md`. It records what a pack is,
+code in this repository. It records what a pack is,
 how it is created, extended and exited, what the contract may never do, how it renders, how the
 repository is laid out, and the decisions that were taken.
 
-Revision 3. The collection and token images use a centred fan; token faces are ranked by backing
+Revision 4 adds owner-only merging of whole live packs into a target pack. Revision 3 made the
+collection and token images use a centred fan; token faces are ranked by backing
 and token id. The current renderer draws up to twelve; the collection's admin-set preview limit
 may be higher for future renderers. Revision 2 made packs extendable by their holder; there is no cap on
 pack size, so exit is chunkable; the pack's value is cached; the creator is recorded; the
@@ -24,12 +25,12 @@ approval wording are fixed.
 A **Shape Pack** is an ERC-721 token in the `ShapePacks` collection that custodies a set of
 live, non-Black Shapes. The pack contract holds the Shapes; the pack token is the claim on them.
 
-- **Sealed against removal.** Nothing leaves a live pack. The holder may **add** Shapes to a
-  pack they own, so a pack's contents can only grow while it is live. A buyer of a pack gets at
+- **Sealed against removal.** Nothing leaves a live pack. The holder may **add** Shapes or merge
+  other packs they own into it, so a pack's contents can only grow while it is live. A buyer gets at
   least the Shapes the metadata listed when they looked, and the exact Shapes it lists when they
   receive it.
 - **Exact value.** A pack's value is the sum of its Shapes' redeemable backing. It is cached at
-  creation, increased on every addition, and asserted equal to the live sum by the invariant
+  creation, increased on every addition or merge, and asserted equal to the live sum by the invariant
   suite. It can never decrease: a packed Shape cannot be redeemed, split, composed or made Black
   by anyone, because every Shapes mutator is owner-only and the pack contract never calls one.
 - **Minimum value: 0.03 ETH** at creation, expressed as `3 * shapes.unit()` so the same build is
@@ -161,6 +162,29 @@ event MetadataUpdate(uint256 packId); // ERC-4906
 Only the owner may add. Letting anyone add would let a stranger bloat a pack's exit cost, and
 there is no use for it that the owner cannot serve by adding themselves. Approved operators cannot
 add, for the same reason they cannot open: every value-affecting action on a pack is owner-only.
+
+---
+
+## 3a. Merging packs
+
+```solidity
+function mergePacks(uint256 targetPackId, uint256[] calldata sourcePackIds) external;
+```
+
+The caller must own the live target and every live source. Approvals are insufficient. At least
+one distinct source is required; a source cannot be the target. Sources are processed in argument
+order, and their Shapes are appended in source insertion order. Every Shape's `packOf` changes to
+the target, the source's cached value is added to the target's, and each source token is burned.
+No Shape changes custody, and no ETH or Shapes call occurs. The entire call is atomic. The target
+retains its ID, owner, creator and own minted count; total minted pack IDs do not change and live
+supply drops by the number of sources. An unsealed source cannot merge.
+
+Each source emits its pack-token burn `Transfer` followed by `PackMerged(target, source, owner,
+shapeIds, addedValueWei, newTargetValueWei)`. One ERC-4906 `MetadataUpdate(target)` follows the
+last source. No unseal or claim event is emitted. Large merges can run out of block gas; the owner
+can unseal and claim a source in chunks, then add those Shapes to the target in chunks. See
+`docs/PACK_MERGE_PROPOSAL.md` for acceptance cases. This is direct transfer of Shape membership,
+not nesting one pack token inside another.
 
 ---
 
@@ -344,8 +368,8 @@ presentation admin, with no authority over custody.
 
 - `admin()`, `transferAdmin`, `renounceAdmin`, with the `IAdminControl` names and errors.
 - `setRenderer(address)` requires code answering ERC-165 for `IShapePackRenderer`.
-- ERC-165 reports both the current `IShapePacks` interface and the earlier deployed interface ID
-  `0xa28b9336`; all functions from the earlier interface remain available.
+- ERC-165 reports the current `IShapePacks` interface and both earlier interface IDs,
+  `0xd53446fc` and `0xa28b9336`; their functions remain available.
 - `previewCardLimit()` starts at 12. The admin may set any positive limit with
   `setPreviewCardLimit(uint256)`. This controls how many highest-backed Shape states the pack
   passes to its renderer. The current renderer still draws at most twelve; a replacement can use
@@ -500,6 +524,8 @@ and out of the pack contract; `packOf` makes the join exact.
 6. **Presentation admin retained**, mirroring Shapes: renderer, copy, one lock, renounceable.
 7. **Name and symbol:** `Shape Packs` / `PACK`; token name `Shape Pack N`.
 8. **Not claimed:** `IShapePositionResolver`. **Not built:** blind packs, nested packs, removal.
+9. **Owner-only merges:** a target pack survives; source pack tokens burn and their Shapes join the
+   target without changing Shapes custody. This is not pack nesting.
 
 ---
 
@@ -516,6 +542,8 @@ interface IShapePacks is IERC721, IERC721Value {
                       uint256[] shapeIds, uint256 pulledCount, uint256 valueWei);
     event PackExtended(uint256 indexed packId, address indexed by, uint256[] shapeIds,
                        uint256 pulledCount, uint256 addedValueWei, uint256 valueWei);
+    event PackMerged(uint256 indexed targetPackId, uint256 indexed sourcePackId, address indexed by,
+                     uint256[] shapeIds, uint256 addedValueWei, uint256 valueWei);
     event PackUnsealed(uint256 indexed packId, address indexed owner, address indexed claimant, uint256 count);
     event ShapesClaimed(uint256 indexed packId, address indexed to, uint256[] shapeIds);
     event EthClaimed(uint256 indexed packId, address indexed recipient, uint256[] shapeIds, uint256 valueWei);
@@ -530,6 +558,8 @@ interface IShapePacks is IERC721, IERC721Value {
 
     // errors
     error NoShapes();
+    error NoSourcePacks();
+    error CannotMergePackIntoItself(uint256 packId);
     error MakeupLengthMismatch();
     error IncorrectPayment(uint256 expected, uint256 provided);
     error WorthlessShape(uint256 shapeId);
@@ -554,6 +584,7 @@ interface IShapePacks is IERC721, IERC721Value {
     function createPack(uint256[] calldata shapeIds, uint32[] calldata mintCounts) external payable returns (uint256);
     function createPackTo(uint256[] calldata shapeIds, uint32[] calldata mintCounts, address to) external payable returns (uint256);
     function addToPack(uint256 packId, uint256[] calldata shapeIds, uint32[] calldata mintCounts) external payable;
+    function mergePacks(uint256 targetPackId, uint256[] calldata sourcePackIds) external;
     function quoteMint(uint32[] calldata mintCounts) external view
         returns (uint256 backingWei, uint256 feeWei, uint256 totalWei, uint256 shapeCount);
     function defaultMakeup(uint256 backingWei) external view returns (uint32[] memory);

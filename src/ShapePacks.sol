@@ -21,10 +21,11 @@ import {IShapePackRenderer, PackRenderInput} from "./interfaces/IShapePackRender
 /// @notice Bundles live Shapes in an ERC-721 that its owner can open or redeem.
 ///
 /// @dev Custody rules:
-///      - Shapes enter a pack in two ways only. They are pulled with
+///      - Shapes enter custody in two ways only. They are pulled with
 ///        `transferFrom(msg.sender, this, id)`, so an approval granted to this contract can only be
 ///        exercised by the approver's own call; or they are minted here by `Shapes.mintBatchTo`,
-///        through the `_minting` receiver window, which admits a mint and nothing else.
+///        through the `_minting` receiver window, which admits a mint and nothing else. The holder
+///        may merge packs it owns without moving Shapes out of this contract.
 ///      - Shapes leave in two ways only, both owner-directed: a plain `transferFrom` out, or one
 ///        `redeemBatchTo` that makes Shapes pay the ETH directly. It does not retain ETH from normal
 ///        calls, though forced ETH can be stranded. It never calls another Shapes mutator or
@@ -46,6 +47,8 @@ contract ShapePacks is ERC721, IShapePacks, IERC2981, IERC721Receiver, Reentranc
     uint256 private constant DEFAULT_PREVIEW_CARD_LIMIT = 12;
     /// @dev Earlier deployed `IShapePacks` ID; its functions remain callable.
     bytes4 private constant PREVIOUS_PACKS_INTERFACE_ID = 0xa28b9336;
+    /// @dev Interface ID before `mergePacks` was added; every function remains callable.
+    bytes4 private constant PRE_MERGE_PACKS_INTERFACE_ID = 0xd53446fc;
 
     /// @inheritdoc IShapePacks
     // forge-lint: disable-next-line(screaming-snake-case-immutable)
@@ -140,6 +143,40 @@ contract ShapePacks is ERC721, IShapePacks, IERC2981, IERC721Receiver, Reentranc
         (uint256[] memory ids, uint256 added) = _intake(packId, shapeIds, mintCounts);
         emit PackExtended(packId, msg.sender, ids, shapeIds.length, added, _valueWei[packId]);
         emit MetadataUpdate(packId);
+    }
+
+    /// @inheritdoc IShapePacks
+    /// @dev Every source is already in this contract's custody. Burn only its pack token, then
+    ///      reassign each Shape to the target; there is no Shapes call or receiver callback.
+    function mergePacks(uint256 targetPackId, uint256[] calldata sourcePackIds) external nonReentrant {
+        if (sourcePackIds.length == 0) revert NoSourcePacks();
+        _requireOwner(targetPackId);
+        uint256[] storage targetContents = _contents[targetPackId];
+
+        for (uint256 i = 0; i < sourcePackIds.length; ++i) {
+            uint256 sourcePackId = sourcePackIds[i];
+            if (sourcePackId == targetPackId) revert CannotMergePackIntoItself(targetPackId);
+            _requireOwner(sourcePackId);
+
+            uint256[] memory moved = _contents[sourcePackId];
+            for (uint256 j = 0; j < moved.length; ++j) {
+                uint256 shapeId = moved[j];
+                targetContents.push(shapeId);
+                _packOf[shapeId] = targetPackId;
+            }
+
+            uint256 addedValue = _valueWei[sourcePackId];
+            _valueWei[targetPackId] += addedValue;
+            delete _contents[sourcePackId];
+            delete _valueWei[sourcePackId];
+            --_liveCount;
+            _burn(sourcePackId);
+            emit PackMerged(
+                targetPackId, sourcePackId, msg.sender, moved, addedValue, _valueWei[targetPackId]
+            );
+        }
+
+        emit MetadataUpdate(targetPackId);
     }
 
     /// @inheritdoc IShapePacks
@@ -464,11 +501,11 @@ contract ShapePacks is ERC721, IShapePacks, IERC2981, IERC721Receiver, Reentranc
     /* -------------------------------- ERC-165 ------------------------------- */
 
     /// @notice Reports the current and previous pack interfaces, plus the supported token standards.
-    /// @dev All functions in the previous interface remain implemented after adding the preview setter.
+    /// @dev All functions in both older interfaces remain implemented.
     function supportsInterface(bytes4 interfaceId) public view override(ERC721, IERC165) returns (bool) {
         return interfaceId == type(IShapePacks).interfaceId || interfaceId == PREVIOUS_PACKS_INTERFACE_ID
-            || interfaceId == type(IERC721Value).interfaceId || interfaceId == type(IERC2981).interfaceId
-            || interfaceId == bytes4(0x49064906) // ERC-4906 metadata update
+            || interfaceId == PRE_MERGE_PACKS_INTERFACE_ID || interfaceId == type(IERC721Value).interfaceId
+            || interfaceId == type(IERC2981).interfaceId || interfaceId == bytes4(0x49064906) // ERC-4906 metadata update
             || super.supportsInterface(interfaceId);
     }
 

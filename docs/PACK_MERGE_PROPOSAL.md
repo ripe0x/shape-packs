@@ -1,7 +1,7 @@
-# Pack merge proposal
+# Pack merge specification
 
-Status: proposed, not implemented or approved for deployment. This describes a future
-`ShapePacks` deployment. Existing deployed collections are not upgradeable and cannot gain this
+Status: implemented in source, not deployed. This describes a future `ShapePacks` deployment.
+Existing deployed collections are not upgradeable and cannot gain this
 entrypoint. It merges packs in one collection; it does not nest pack tokens or change `Shapes`.
 
 ## Behavior
@@ -79,8 +79,9 @@ source pack and requires more transactions; it cannot keep the source NFT live d
 
 ## Release scope
 
-Implementation needs the interface, contract, tests, event consumers/indexer, and UI transaction
-flow updated together. Rehearse against a fresh Sepolia deployment, including real receipts and
+The interface, contract and tests implement this behavior. Event consumers/indexer and UI
+transaction flow must recognize the new operation before a product release. Rehearse against a
+fresh Sepolia deployment, including real receipts and
 source verification, before recommending a mainnet deployment. Existing Sepolia and mainnet packs
 cannot be merged directly by a new contract; their holders can open or claim them and create or
 extend a pack in the new collection.

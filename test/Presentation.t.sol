@@ -177,6 +177,8 @@ contract PresentationTest is MetadataHelpers {
         assertTrue(packs.supportsInterface(bytes4(0x49064906)), "ERC-4906");
         assertTrue(packs.supportsInterface(type(IERC721Value).interfaceId));
         assertTrue(packs.supportsInterface(type(IShapePacks).interfaceId));
+        assertEq(type(IShapePacks).interfaceId, bytes4(0x0da10861), "merge interface ID");
+        assertTrue(packs.supportsInterface(0xd53446fc), "pre-merge pack interface");
         assertTrue(packs.supportsInterface(0xa28b9336), "previous pack interface");
         assertFalse(packs.supportsInterface(0xffffffff));
         assertFalse(packs.supportsInterface(0x12345678));

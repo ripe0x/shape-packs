@@ -7,11 +7,11 @@ A Shape Pack is an ERC-721 in the `ShapePacks` collection that custodies a set o
 the claim on them. A pack is built from Shapes you already hold, from ETH minted into Shapes on the
 spot, or both, at whatever makeup you choose. It has five properties.
 
-- **Sealed against removal.** Nothing leaves a live pack. The holder may add Shapes to a pack they
-  own, so contents only grow while the pack is live. A buyer gets at least the Shapes the metadata
-  listed when they looked, and exactly the Shapes it lists when they receive it.
+- **Sealed against removal.** Nothing leaves a live pack. The holder may add Shapes or merge in
+  other packs they own, so contents only grow while the pack is live. A buyer gets at least the
+  Shapes the metadata listed when they looked, and exactly the Shapes it lists when they receive it.
 - **Exact value.** A pack's value is the sum of its Shapes' redeemable backing. It is cached at
-  creation, increased on every addition, and asserted equal to the live sum by the invariant suite.
+  creation, increased on every addition or merge, and asserted equal to the live sum by the invariant suite.
   It never decreases: no one can redeem, split, compose or blacken a packed Shape.
 - **Minimum `3 * shapes.unit()` at creation:** 0.03 ETH on mainnet and 0.0003 ETH on Sepolia's
   1/100 ladder. Neither minimum is a denomination; the smallest packs are three unit Shapes or
@@ -103,6 +103,25 @@ value and minted count increase, and the call emits `PackExtended` and the ERC-4
 `MetadataUpdate`. Only the owner can add. An approved operator cannot, for the same reason an
 operator cannot open: every value-affecting action on a pack is owner-only. Additions are also how a
 very large pack is built, one block-sized transaction at a time.
+
+## Merging packs
+
+```solidity
+function mergePacks(uint256 targetPackId, uint256[] calldata sourcePackIds) external;
+```
+
+The owner of every named pack can merge one or more live sources into a live target. Sources are
+processed in the order given, with each source's Shape order preserved. The target retains its ID,
+owner and creator; its contents and exact backing value grow. Each source token is burned. Shapes
+stay in the same contract, so the merge needs no Shape approval, ETH or mint fee. An approved pack
+operator cannot merge without taking ownership first. The call is atomic and rejects an empty
+source list, self-merge, repeated source, or any pack the caller does not own.
+
+`PackMerged` identifies each burned source, its Shape IDs and value, and the target's new value;
+one `MetadataUpdate` is emitted for the target. The target's `mintedCount` does not include Shapes
+minted by source packs. There is no size cap, but a very large merge may exceed block gas. Its
+owner can instead unseal a source, claim Shapes in chunks and add them to the target in chunks.
+The deployed collections cannot gain this function; it requires a new `ShapePacks` deployment.
 
 ## Exiting a pack
 

@@ -1,0 +1,11 @@
+{
+  "chainId": 1,
+  "shapes": "0x6fe9193276bf7abcbee44ab7afd717d637d6faf0",
+  "shapePacks": "0xf21514b090da7df4390803497d6ae673801e5ca7",
+  "shapePackRenderer": "0xaf1c899baacc0fe8cfba0c6cf2624a018a393def",
+  "admin": "0xcb43078c32423f5348cab5885911c3b5fae217f9",
+  "minPackValueWei": "30000000000000000",
+  "previewCardLimit": 12,
+  "deployer": "0xcb43078c32423f5348cab5885911c3b5fae217f9",
+  "blockNumber": 26164530
+}

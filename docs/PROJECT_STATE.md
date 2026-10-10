@@ -1,7 +1,7 @@
 # Project state
 
 Objective: Add owner-only atomic merging of live Shape Packs into a surviving target pack.
-Phase: Sepolia v4 verified and multi-pack merge confirmed; mainnet rehearsal passed, broadcast pending.
+Phase: Sepolia v4 verified and multi-pack merge confirmed; mainnet deployed, source verification pending.
 Candidate: `de77ce4` (merge) plus `81381c5` (chunked-exit test) on primary `main`.
 Product rules: [DESIGN.md](../DESIGN.md), [SECURITY.md](../SECURITY.md), and [pack merge specification](PACK_MERGE_PROPOSAL.md).
 
@@ -70,9 +70,20 @@ readbacks passing. The dry-run artifact records exactly two creations, no receip
 fee, Forge estimated 8,229,944 gas and 0.001094720173123568 ETH total. The predicted renderer
 and packs addresses are `0x7d5f4c54177b21332e94eafa37ad6126dca2887f` and
 `0xaf1c899baacc0fe8cfba0c6cf2624a018a393def`; they matched ripe0x's pending nonce at
-readback, but can change if that nonce advances. No mainnet transaction has been broadcast.
+readback, but can change if that nonce advances.
 
-Next: the owner can run the mainnet broadcast from clean primary `main` using the `ripe0x`
-keystore. The wrapper re-simulates and prints updated fees before opening the keystore. Afterward,
-inspect receipts and live constructor state, then preflight and submit source verification as a
-separate gate. Update event consumers and the website merge flow before a public product release.
+The owner broadcast the mainnet deployment later on October 10, 2026. `deployments/1.json`
+records ShapePackRenderer `0xaf1c899baacc0fe8cfba0c6cf2624a018a393def` and ShapePacks
+`0xf21514b090da7df4390803497d6ae673801e5ca7`, with ripe0x as deployer and admin,
+0.03 ETH minimum pack value, and preview limit 12 at block 26164530. The saved creation
+transactions `0x2a718c8729dee94a2fd3d551ebb33d854d0d62ebba77a1c5fef3f5480fa53900`
+and `0x5a8273e78b88a4ad3ff2a106a712ec96050401d293977fe76e33d3bdda2dd6d4`
+both have successful receipts. The deployment wrapper checked live code and constructor
+readbacks before writing the manifest. The read-only source preflight on primary `main`
+matched both complete onchain creation inputs against one `Deploy.s.sol` build. Its Etherscan
+payload is Solidity Standard JSON containing only `language`, `sources`, and `settings`.
+The focused verifier tests passed (11 tests). No mainnet source submission has occurred yet.
+
+Next: the owner submits mainnet source verification, then confirms Etherscan reports both
+contracts verified. Update event consumers and the website merge flow before a public product
+release.

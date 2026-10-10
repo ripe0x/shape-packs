@@ -183,6 +183,42 @@ contract MergeTest is PacksTest {
         }
     }
 
+    function test_MergedTargetCanUnsealAndClaimInChunks() public {
+        uint256 target = _mintPack(alice, 1, 1);
+        uint256 source = _mintPack(alice, 0, 3);
+        vm.prank(alice);
+        packs.mergePacks(target, ids1(source));
+        uint256[] memory allIds = packs.contentsOf(target);
+
+        vm.prank(alice);
+        packs.unseal(target, alice);
+        assertFalse(packs.exists(target));
+        assertEq(packs.claimantOf(target), alice);
+        for (uint256 i = 0; i < allIds.length; ++i) {
+            assertEq(packs.packOf(allIds[i]), target);
+        }
+
+        vm.prank(alice);
+        packs.claim(target, 2);
+        assertEq(packs.contentsOf(target).length, allIds.length - 2);
+        assertEq(shapes.ownerOf(allIds[allIds.length - 1]), alice);
+        assertEq(shapes.ownerOf(allIds[allIds.length - 2]), alice);
+        uint256 remainingValue;
+        for (uint256 i = 0; i < allIds.length - 2; ++i) {
+            remainingValue += shapes.backingOf(allIds[i]);
+        }
+
+        uint256 beforeBalance = alice.balance;
+        vm.prank(alice);
+        packs.claimEth(target, type(uint256).max, payable(alice));
+        assertEq(alice.balance, beforeBalance + remainingValue);
+        assertEq(packs.contentsOf(target).length, 0);
+        assertEq(packs.claimantOf(target), address(0));
+        for (uint256 i = 0; i < allIds.length; ++i) {
+            assertEq(packs.packOf(allIds[i]), 0);
+        }
+    }
+
     function test_RejectsEmptySelfAndRepeatedSourcesAtomically() public {
         uint256 target = _mintPack(alice, 1, 1);
         uint256 source = _mintPack(alice, 1, 1);

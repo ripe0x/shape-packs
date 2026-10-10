@@ -1,7 +1,7 @@
 # Project state
 
 Objective: Add owner-only atomic merging of live Shape Packs into a surviving target pack.
-Phase: Sepolia v4 minted and multi-pack merge confirmed; mainnet rehearsal pending.
+Phase: Sepolia v4 verified and multi-pack merge confirmed; mainnet rehearsal passed, broadcast pending.
 Candidate: `de77ce4` (merge) plus `81381c5` (chunked-exit test) on primary `main`.
 Product rules: [DESIGN.md](../DESIGN.md), [SECURITY.md](../SECURITY.md), and [pack merge specification](PACK_MERGE_PROPOSAL.md).
 
@@ -44,8 +44,8 @@ transaction `0x771a010de68ef63d38ef971f0509941a72db51064182b0828c9703f486032823`
 succeeded and emitted three `PackMerged` events: sources 5, 3 and 2 joined target 6. Live reads
 show supply 3; target 6 holds 26 Shapes and 0.0069 ETH backing. Read-only Sepolia gas estimates
 of `open(6)` and `redeem(6)` succeeded at 1,304,082 and 2,099,703 gas, respectively; neither
-exit was broadcast. The owner confirmed both Sepolia v4 contracts are source verified. The verifier's 11 local
-regression tests passed on current `main`.
+exit was broadcast. The owner confirmed both Sepolia v4 contracts are source verified.
+The verifier's 11 local regression tests passed on current `main`.
 
 The mainnet Shapes fork lifecycle test passed against Tenderly's public mainnet RPC on current
 `main`. It covers creation, addition and redemption against live Shapes, not merge. The Sepolia
@@ -62,7 +62,17 @@ error. The verifier compares full creation inputs built from one deployment comp
 submits only Solidity Standard JSON keys. The earlier renderer mismatch and unsupported
 `allowPaths` submission were explorer verification failures after successful broadcasts.
 
-Next: run the keyless mainnet deployment dry run from clean primary
-`main` with `forge clean`, then `CONFIRM_MAINNET=yes DRY_RUN=1 script/deploy.sh mainnet`.
-Inspect its gas, fee, address, and constructor readback outputs before any broadcast. Update event
-consumers and the website merge flow before a public product release.
+On October 10, 2026, the owner ran the keyless mainnet rehearsal from clean primary `main` after
+`forge clean`. Solidity 0.8.28 compiled 47 files and `Deploy.s.sol` finished with its constructor
+readbacks passing. The dry-run artifact records exactly two creations, no receipts, Shapes
+`0x6fe9193276bf7abcbee44ab7afd717d637d6faf0`, and admin
+`0xcb43078c32423f5348cab5885911c3b5fae217f9`. At the sampled 0.133016722 gwei maximum
+fee, Forge estimated 8,229,944 gas and 0.001094720173123568 ETH total. The predicted renderer
+and packs addresses are `0x7d5f4c54177b21332e94eafa37ad6126dca2887f` and
+`0xaf1c899baacc0fe8cfba0c6cf2624a018a393def`; they matched ripe0x's pending nonce at
+readback, but can change if that nonce advances. No mainnet transaction has been broadcast.
+
+Next: the owner can run the mainnet broadcast from clean primary `main` using the `ripe0x`
+keystore. The wrapper re-simulates and prints updated fees before opening the keystore. Afterward,
+inspect receipts and live constructor state, then preflight and submit source verification as a
+separate gate. Update event consumers and the website merge flow before a public product release.

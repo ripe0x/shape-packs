@@ -1,75 +1,39 @@
 # Project state
 
-Phase: Sepolia v3 deployed; source verification pending
-Branch: primary main; public-chain deployment uses the clean primary checkout only
-Code candidate: 081c2c5, merged by 7c28c22; renderer layout 6275bf4 remains accepted
-Product rules: [DESIGN.md](../DESIGN.md) and [SECURITY.md](../SECURITY.md)
-Launch status: Sepolia v3 receipts and constructor readbacks verified; source submission pending
-Constraint: Earlier deployed collections cannot gain the preview-limit setter. The original
-collection caps previews at eleven; its three packs remain there. V2 defaults to twelve. V3
-starts at twelve and its presentation admin can set any positive preview limit until locked.
+Objective: Add owner-only atomic merging of live Shape Packs into a surviving target pack.
+Phase: Contract implementation complete on primary `main`; release integration and deployment remain separate.
+Candidate: `de77ce4` (merge) plus `81381c5` (chunked-exit test) on primary `main`.
+Product rules: [DESIGN.md](../DESIGN.md), [SECURITY.md](../SECURITY.md), and [pack merge specification](PACK_MERGE_PROPOSAL.md).
 
-The redesign draws up to twelve actual Shape faces on a transparent canvas, ordered by redeemable
-backing with token-id ties. Even packs through twelve use a balanced two-card centre with smaller
-faces distributed in matched left and right pairs. Odd packs retain a single highest-value face
-centred in front. Three Shapes retain the Draw Shapes hero spacing. Beyond seven, even packs keep
-the six-Shape face sizes and odd packs keep the seven-Shape face sizes. Every step beyond the
-third tier is 180 canvas units in both layouts. The gap into the third tier
-stays fixed at 170 canvas units. Packs over twelve show their top twelve cards.
-The contractURI uses the same layout with three illustrative faces. Rendered
-1- through 12-Shape examples are in `preview/fan-contact-sheet.png` (ignored, local review
-artifact). The user accepted the layout for release. Default and testnet Foundry suites pass,
-223 tests each. The release tool passed ten focused tests and independent review. From clean
-primary main, `DRY_RUN=1 DEPLOYMENT_LABEL=v2 script/deploy.sh sepolia` passed against Tenderly's
-public RPC with `forge clean` and constructor readback; no transactions were sent. The existing
-manifest and broadcast remained unchanged during rehearsal. The user then deployed v2 from
-primary main. Both receipts succeeded and readbacks match. The exact-input source preflight
-passed for both new creations; the user reports that Etherscan verified both.
+The caller owns the target and every source. The target keeps its ID and gains their contents and
+backing; each source token burns. Shapes stay in the same custody contract, with `packOf` updated
+and no ETH or Shapes call. The operation is atomic, supports several sources, and preserves both
+older `IShapePacks` ERC-165 IDs. Source insertion order is kept. The target's `mintedCount`
+continues to count only Shapes minted directly by that target.
 
-V2 `ShapePackRenderer` is at `0x199f7d71d8d56cb721c2a71c68cc34b8f925af9c` (transaction
-`0x8412c3dde9d249ccbd40777ce7d8ab424267d6eed17a277c8b64fcba01c318b5`). V2
-`ShapePacks` is at `0x4974f26d743b7d39761198209776d7d3f50ba94d` (transaction
-`0xdb00d33997c575c2f6a662d22db2d653b83b274c6cad02c9ad10407d72e4991b`).
-The checked manifest is `deployments/11155111-v2.json`; its block is 11880142. Live reads
-confirm the Shapes link, renderer link, deployer/admin and unlocked presentation. Total supply
-is zero. The original collection remains unlocked with admin `0xcb43078c32423f5348cab5885911c3b5fae217f9`;
-a simulated `setRenderer` to the v2 renderer succeeded.
+Evidence: default and testnet full Foundry suites passed for the merge implementation. The final
+chunked `unseal`/`claim`/`claimEth` test passed on both profiles after it was added. `forge build`
+compiled the contract; runtime bytecode is 17,715 bytes, 6,861 below the EIP-170 limit. An
+independent read-only review of the immutable implementation commit `1fae168` found no concrete
+custody or correctness blocker. The only review gap was merged-pack chunked-exit coverage, added
+in `81381c5`; the reviewed contract code did not change afterward.
 
-On October 9, 2026, both creation receipts succeeded. `ShapePackRenderer` is at
-`0xd9ff1d1b7dd7b26a7b52c5f7f8abad7d216ceeb4` (transaction
-`0x9d0eb80f63333eb903725131c8c7530669ba6b20652c2f87e8d1d39721845395`).
-`ShapePacks` is at `0x5ee5186c1f66b03ba1d675ac60668e168f5306d8` (transaction
-`0xfbf7851f0383fde16f0bd5ab596542cb424a8a3299da2d6f2551949d6c1479f1`).
-Tenderly live reads confirm code at both addresses, the expected Shapes and renderer links,
-the `ripe0x` deployer as presentation admin, and a `300000000000000` wei minimum pack value.
-The verified onchain manifest is `deployments/11155111.json`.
+External state: Sepolia v3 is recorded in `deployments/11155111-v3.json`. ShapePacks is
+`0xd1cfc13abcbb370d381ac192aeb6f2e1b414022a` and ShapePackRenderer is
+`0xfef50a388bde6b222c6f5fecafe590bf561c8bda`. Creation receipts and constructor readbacks
+were verified, and the exact-input source preflight matched both creations. Source submission was
+still pending in the last recorded project state. The v3 collection has no merge function and
+cannot be upgraded. The new source has not been deployed or source-verified onchain. Existing
+packs can be opened or claimed and their Shapes moved into a new collection, but a new collection
+cannot directly merge old pack tokens.
 
-Etherscan now shows an exact source match for both `ShapePacks` and `ShapePackRenderer`.
-Forge's original one-of-two verification failure happened after both contracts deployed.
-The standalone retry compiled only the renderer's 18-source import graph, while the deployment
-script compiled 47 sources, so its bytecode differed. A full-input submission then failed because
-Foundry's build info included the CLI-only `allowPaths` field. The corrected helper sent the full
-source set with only Solidity Standard JSON keys; both public Etherscan code pages now show an
-exact match. The wrapper records valid onchain state even if Forge exits nonzero after broadcast.
-The release workflow now separates broadcasting from source verification. The verifier checks
-both live creation transactions against one full deployment build and submits only Standard JSON
-fields, so neither of the two failed retry paths is used for a future mainnet deployment.
+Deployment rules: The user runs all public-chain transactions from the clean primary `main`
+checkout with Tenderly's public RPC and `forge clean` in deployment paths. Treat broadcast,
+receipt/readback, and source verification as separate gates; never rebroadcast to fix an explorer
+error. The verifier compares full creation inputs built from one deployment compilation unit and
+submits only Solidity Standard JSON keys. The earlier renderer mismatch and unsupported
+`allowPaths` submission were explorer verification failures after successful broadcasts.
 
-Current change: `ShapePacks` starts with a 12-card preview limit and lets the presentation admin
-set any positive limit until locked. It passes up to that many top-ranked Shape states; the current
-renderer still draws no more than twelve. New setting affects token images only and emits an
-ERC-4906 batch update. Default and testnet suites pass, 226 tests each; release-tool regressions
-pass 10 tests and the deployment script builds. An independent review of 081c2c5 found no blocker;
-the previous ERC-165 interface ID remains supported. Deployment and preview script NatSpec was
-updated in e6317d4 and both scripts compile. The original Sepolia collection still points to its
-old renderer as of the latest live read. V3 was deployed from primary main at 716ac02.
-The v3 manifest is `deployments/11155111-v3.json`; both creation receipts succeeded at blocks
-11880346 and 11880347. Renderer `0xfef50a388bde6b222c6f5fecafe590bf561c8bda` was created
-in transaction `0xe31e48575f931c3310a39f8008a1dabc49d28c977f0a68fc8ff4a677da0da219`;
-ShapePacks `0xd1cfc13abcbb370d381ac192aeb6f2e1b414022a` was created in transaction
-`0xe5fa5ee833c0628ae797ed4fee42525425b4255c1deae3410a269bffe453d40d`. Tenderly
-live reads confirm code, creation inputs, Shapes and renderer links, admin/deployer, minimum
-value, and the default preview limit of 12. The read-only source preflight matched both complete
-creation inputs against the same 47-source Solidity Standard JSON payload, with no CLI-only
-`allowPaths` field. Next: user submits this checked payload to Etherscan, then confirm both source
-verification statuses. Do not rebroadcast to remedy an explorer error.
+Next: update event consumers and the website merge flow before a product release; then rehearse a
+fresh Sepolia deployment and source-verification path from clean primary `main`. Do not present this
+implementation as deployed.

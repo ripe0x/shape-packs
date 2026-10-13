@@ -33,9 +33,9 @@ live, non-Black Shapes. The pack contract holds the Shapes; the pack token is th
   creation, increased on every addition or merge, and asserted equal to the live sum by the invariant
   suite. It can never decrease: a packed Shape cannot be redeemed, split, composed or made Black
   by anyone, because every Shapes mutator is owner-only and the pack contract never calls one.
-- **Minimum value: 0.03 ETH** at creation, expressed as `3 * shapes.unit()` so the same build is
-  correct on Sepolia's 1/100 ladder. 0.03 is not itself a denomination, so the smallest packs
-  are three 0.01 Shapes, one 0.05, or 0.01 + 0.05, and so on. Additions have no minimum.
+- **Minimum value: a constructor parameter in units of `shapes.unit()`.** Draw Packs deploys with
+  two units, 0.02 ETH on mainnet, so the smallest packs are two 0.01 Shapes or one 0.05. The
+  general Shape Packs collection uses three units. Additions have no minimum.
 - **No cap on size.** A pack may hold as many Shapes as its creator cares to pay gas for, across
   as many transactions as they like. Creation and additions are each bounded by the block only.
   Exit is chunkable (§4), so no pack can outgrow its own exit.

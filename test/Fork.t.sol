@@ -47,7 +47,7 @@ contract ForkTest is Test {
         vm.deal(user, 100 ether);
 
         packRenderer = new ShapePackRenderer(address(SHAPES));
-        packs = new ShapePacks(address(SHAPES), address(packRenderer), admin);
+        packs = new ShapePacks(address(SHAPES), address(packRenderer), admin, "Shape Packs", "PACK", 2);
         strayWei = address(packs).balance;
     }
 
@@ -128,8 +128,8 @@ contract ForkTest is Test {
         assertEq(SHAPES.unit(), 0.01 ether, "mainnet ladder");
         assertEq(SHAPES.denominationCount(), 9);
 
-        assertEq(packs.MIN_PACK_VALUE(), 0.03 ether, "floor");
-        assertEq(packs.MIN_PACK_VALUE(), 3 * SHAPES.unit());
+        assertEq(packs.MIN_PACK_VALUE(), 0.02 ether, "floor");
+        assertEq(packs.MIN_PACK_VALUE(), 2 * SHAPES.unit());
         assertEq(packs.shapes(), address(SHAPES));
 
         // The floor: three 0.01 ETH Shapes minted from ETH.

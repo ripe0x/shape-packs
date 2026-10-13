@@ -45,7 +45,15 @@ contract Deploy is Script {
         address admin = adminInput == address(0) ? deployer : adminInput;
 
         renderer = new ShapePackRenderer(shapes);
-        packs = new ShapePacks(shapes, address(renderer), admin);
+        packs = new ShapePacks(shapes, address(renderer), admin, "Draw Packs", "DRAW", 2);
+        if (admin == deployer) {
+            packs.setMetadataCopy(
+                "Draw Pack ",
+                "A Draw Pack bundles Shapes into one token. Its value is exactly the sum of the Shapes "
+                "inside, which only ever grows while the pack is live. Open it to take the Shapes out, or "
+                "redeem it for their ETH."
+            );
+        }
         vm.stopBroadcast();
 
         _readback(shapes, renderer, packs, admin);

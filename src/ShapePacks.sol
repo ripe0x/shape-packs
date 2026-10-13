@@ -86,7 +86,14 @@ contract ShapePacks is ERC721, IShapePacks, IERC2981, IERC721Receiver, Reentranc
     /// @param shapes_ The Shapes token to wrap. Must answer ERC-165 for `IShapes`.
     /// @param renderer_ The initial renderer. Must answer ERC-165 for `IShapePackRenderer`.
     /// @param admin_ The presentation admin. Nonzero.
-    constructor(address shapes_, address renderer_, address admin_) ERC721("Shape Packs", "PACK") {
+    constructor(
+        address shapes_,
+        address renderer_,
+        address admin_,
+        string memory name_,
+        string memory symbol_,
+        uint256 minPackUnits_
+    ) ERC721(name_, symbol_) {
         // `ERC165Checker` treats a revert, a silent fallback and malformed return data alike, so
         // every way of not being Shapes fails with the same error.
         if (!ERC165Checker.supportsInterface(shapes_, type(IShapes).interfaceId)) {
@@ -96,7 +103,8 @@ contract ShapePacks is ERC721, IShapePacks, IERC2981, IERC721Receiver, Reentranc
         if (admin_ == address(0)) revert AdminInvalidAdmin(address(0));
 
         shapes = shapes_;
-        MIN_PACK_VALUE = 3 * IShapes(shapes_).unit();
+        if (minPackUnits_ == 0) revert PackBelowMinimum(0, IShapes(shapes_).unit());
+        MIN_PACK_VALUE = minPackUnits_ * IShapes(shapes_).unit();
         _renderer = renderer_;
         _admin = admin_;
         previewCardLimit = DEFAULT_PREVIEW_CARD_LIMIT;

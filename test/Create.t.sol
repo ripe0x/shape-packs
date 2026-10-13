@@ -138,7 +138,7 @@ contract CreateTest is PacksTest {
         assertEq(balBefore - alice.balance, cost, "alice paid exactly the quote");
         assertEq(packs.totalMinted(), 1, "totalMinted");
         assertEq(packs.totalSupply(), 1, "totalSupply");
-        assertEq(packs.MIN_PACK_VALUE(), 3 * unit(), "floor");
+        assertEq(packs.MIN_PACK_VALUE(), 2 * unit(), "floor");
     }
 
     function test_MintedPackAboveFloorWithOneIndexOneShape() public {
@@ -581,10 +581,17 @@ contract CreateTest is PacksTest {
         assertEq(shapes.ownerOf(id), alice, "everything rolled back");
     }
 
-    function test_RevertPackBelowMinimumTwoMinted() public {
+    function test_MintedPackAtFloorTwoUnits() public {
+        // Two minted units is exactly the floor and passes.
         uint32[] memory counts = mintsOf(0, 2);
+        uint256 packId = _create(alice, noIds(), counts);
+        assertEq(packs.valueOf(packId), 2 * unit());
+    }
+
+    function test_RevertPackBelowMinimumOneMinted() public {
+        uint32[] memory counts = mintsOf(0, 1);
         uint256 cost = costOf(counts);
-        vm.expectRevert(abi.encodeWithSelector(IShapePacks.PackBelowMinimum.selector, 2 * unit(), 3 * unit()));
+        vm.expectRevert(abi.encodeWithSelector(IShapePacks.PackBelowMinimum.selector, unit(), 2 * unit()));
         vm.prank(alice);
         packs.createPack{value: cost}(noIds(), counts);
         assertEq(packs.totalMinted(), 0);
@@ -595,24 +602,23 @@ contract CreateTest is PacksTest {
         uint256 id = mintShape(alice, 0);
         approveAll(alice);
         uint32[] memory counts = noMints();
-        vm.expectRevert(abi.encodeWithSelector(IShapePacks.PackBelowMinimum.selector, unit(), 3 * unit()));
+        vm.expectRevert(abi.encodeWithSelector(IShapePacks.PackBelowMinimum.selector, unit(), 2 * unit()));
         vm.prank(alice);
         packs.createPack(ids1(id), counts);
         assertEq(shapes.ownerOf(id), alice);
     }
 
-    function test_RevertPackBelowMinimumMixedTwoUnits() public {
+    function test_FloorIsInclusiveOfPulledPlusMinted() public {
+        // 1 unit pulled + 1 unit minted is exactly the floor and passes.
         uint256 id = mintShape(alice, 0);
         approveAll(alice);
         uint32[] memory counts = mintsOf(0, 1);
-        uint256 cost = costOf(counts);
-        vm.expectRevert(abi.encodeWithSelector(IShapePacks.PackBelowMinimum.selector, 2 * unit(), 3 * unit()));
-        vm.prank(alice);
-        packs.createPack{value: cost}(ids1(id), counts);
+        uint256 packId = _create(alice, ids1(id), counts);
+        assertEq(packs.valueOf(packId), 2 * unit());
     }
 
-    function test_FloorIsInclusiveOfExactlyThreeUnits() public {
-        // 2 units pulled + 1 unit minted is exactly the floor and passes.
+    function test_FloorPassesAboveTwoUnits() public {
+        // 2 units pulled + 1 unit minted is above the floor and passes.
         uint256[] memory held = mintShapes(alice, 0, 2);
         approveAll(alice);
         uint32[] memory counts = mintsOf(0, 1);
@@ -668,16 +674,15 @@ contract CreateTest is PacksTest {
     }
 
     function test_RevertedCreationLeavesNoTrace() public {
-        uint256[] memory held = mintShapes(alice, 0, 2);
+        uint256[] memory held = mintShapes(alice, 0, 1);
         approveAll(alice);
-        uint32[] memory counts = mintsOf(0, 0); // nothing minted; 2 units pulled is below the floor
+        uint32[] memory counts = mintsOf(0, 0); // nothing minted; 1 unit pulled is below the floor
         uint256 supplyBefore = shapes.totalSupply();
-        vm.expectRevert(abi.encodeWithSelector(IShapePacks.PackBelowMinimum.selector, 2 * unit(), 3 * unit()));
+        vm.expectRevert(abi.encodeWithSelector(IShapePacks.PackBelowMinimum.selector, unit(), 2 * unit()));
         vm.prank(alice);
         packs.createPack(held, counts);
         assertEq(shapes.totalSupply(), supplyBefore);
         assertEq(packs.packOf(held[0]), 0);
-        assertEq(packs.packOf(held[1]), 0);
         assertEq(shapes.ownerOf(held[0]), alice);
         assertEq(packs.totalMinted(), 0);
         assertEq(packs.totalSupply(), 0);

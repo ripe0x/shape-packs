@@ -197,76 +197,76 @@ contract PresentationTest is MetadataHelpers {
     function test_ConstructorEmitsAdminTransferred() public {
         vm.expectEmit(true, true, false, false);
         emit IShapePacks.AdminTransferred(address(0), admin);
-        ShapePacks fresh = new ShapePacks(address(shapes), address(packRenderer), admin);
+        ShapePacks fresh = new ShapePacks(address(shapes), address(packRenderer), admin, "Shape Packs", "PACK", 2);
         assertEq(fresh.admin(), admin);
     }
 
     function test_ConstructorRejectsZeroAdmin() public {
         vm.expectRevert(abi.encodeWithSelector(IShapePacks.AdminInvalidAdmin.selector, address(0)));
-        new ShapePacks(address(shapes), address(packRenderer), address(0));
+        new ShapePacks(address(shapes), address(packRenderer), address(0), "Shape Packs", "PACK", 2);
     }
 
     function test_ConstructorRejectsRendererWithoutCode() public {
         address eoa = address(0xBEEF);
         vm.expectRevert(abi.encodeWithSelector(IShapePacks.UnsupportedRenderer.selector, eoa));
-        new ShapePacks(address(shapes), eoa, admin);
+        new ShapePacks(address(shapes), eoa, admin, "Shape Packs", "PACK", 2);
 
         vm.expectRevert(abi.encodeWithSelector(IShapePacks.UnsupportedRenderer.selector, address(0)));
-        new ShapePacks(address(shapes), address(0), admin);
+        new ShapePacks(address(shapes), address(0), admin, "Shape Packs", "PACK", 2);
     }
 
     function test_ConstructorRejectsRendererThatDoesNotAnswerErc165() public {
         // The test contract has code and no `supportsInterface`.
         vm.expectRevert(abi.encodeWithSelector(IShapePacks.UnsupportedRenderer.selector, address(this)));
-        new ShapePacks(address(shapes), address(this), admin);
+        new ShapePacks(address(shapes), address(this), admin, "Shape Packs", "PACK", 2);
 
         // A real ERC-165 contract that is not a pack renderer.
         vm.expectRevert(abi.encodeWithSelector(IShapePacks.UnsupportedRenderer.selector, address(shapes)));
-        new ShapePacks(address(shapes), address(shapes), admin);
+        new ShapePacks(address(shapes), address(shapes), admin, "Shape Packs", "PACK", 2);
 
         FalseSupport no = new FalseSupport();
         vm.expectRevert(abi.encodeWithSelector(IShapePacks.UnsupportedRenderer.selector, address(no)));
-        new ShapePacks(address(shapes), address(no), admin);
+        new ShapePacks(address(shapes), address(no), admin, "Shape Packs", "PACK", 2);
     }
 
     function test_ConstructorRejectsShapesWithoutCode() public {
         address eoa = address(0xBEEF);
         vm.expectRevert(abi.encodeWithSelector(ShapePacks.UnsupportedShapes.selector, eoa));
-        new ShapePacks(eoa, address(packRenderer), admin);
+        new ShapePacks(eoa, address(packRenderer), admin, "Shape Packs", "PACK", 2);
 
         vm.expectRevert(abi.encodeWithSelector(ShapePacks.UnsupportedShapes.selector, address(0)));
-        new ShapePacks(address(0), address(packRenderer), admin);
+        new ShapePacks(address(0), address(packRenderer), admin, "Shape Packs", "PACK", 2);
     }
 
     function test_ConstructorRejectsShapesThatIsNotShapes() public {
         // No ERC-165 at all.
         vm.expectRevert(abi.encodeWithSelector(ShapePacks.UnsupportedShapes.selector, address(this)));
-        new ShapePacks(address(this), address(packRenderer), admin);
+        new ShapePacks(address(this), address(packRenderer), admin, "Shape Packs", "PACK", 2);
 
         // ERC-165 that does not claim `IShapes`: the pack renderer, and the stub.
         vm.expectRevert(abi.encodeWithSelector(ShapePacks.UnsupportedShapes.selector, address(packRenderer)));
-        new ShapePacks(address(packRenderer), address(packRenderer), admin);
+        new ShapePacks(address(packRenderer), address(packRenderer), admin, "Shape Packs", "PACK", 2);
 
         FalseSupport no = new FalseSupport();
         vm.expectRevert(abi.encodeWithSelector(ShapePacks.UnsupportedShapes.selector, address(no)));
-        new ShapePacks(address(no), address(packRenderer), admin);
+        new ShapePacks(address(no), address(packRenderer), admin, "Shape Packs", "PACK", 2);
     }
 
     function test_ConstructorChecksShapesBeforeRendererBeforeAdmin() public {
         vm.expectRevert(abi.encodeWithSelector(ShapePacks.UnsupportedShapes.selector, address(0xBEEF)));
-        new ShapePacks(address(0xBEEF), address(0xCAFE), address(0));
+        new ShapePacks(address(0xBEEF), address(0xCAFE), address(0), "Shape Packs", "PACK", 2);
 
         vm.expectRevert(abi.encodeWithSelector(IShapePacks.UnsupportedRenderer.selector, address(0xCAFE)));
-        new ShapePacks(address(shapes), address(0xCAFE), address(0));
+        new ShapePacks(address(shapes), address(0xCAFE), address(0), "Shape Packs", "PACK", 2);
     }
 
     function test_MinPackValueIsThreeUnits() public {
-        assertEq(packs.MIN_PACK_VALUE(), 3 * shapes.unit());
-        assertEq(packs.MIN_PACK_VALUE(), 3 * unit());
-        if (unit() == 0.01 ether) assertEq(packs.MIN_PACK_VALUE(), 0.03 ether);
+        assertEq(packs.MIN_PACK_VALUE(), 2 * shapes.unit());
+        assertEq(packs.MIN_PACK_VALUE(), 2 * unit());
+        if (unit() == 0.01 ether) assertEq(packs.MIN_PACK_VALUE(), 0.02 ether);
         // Read from Shapes at construction, so a fresh deployment agrees.
-        ShapePacks fresh = new ShapePacks(address(shapes), address(packRenderer), admin);
-        assertEq(fresh.MIN_PACK_VALUE(), 3 * IShapes(address(shapes)).unit());
+        ShapePacks fresh = new ShapePacks(address(shapes), address(packRenderer), admin, "Shape Packs", "PACK", 2);
+        assertEq(fresh.MIN_PACK_VALUE(), 2 * IShapes(address(shapes)).unit());
     }
 
     /* ------------------------------ admin transfer ------------------------------ */

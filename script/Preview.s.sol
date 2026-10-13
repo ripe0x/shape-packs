@@ -26,7 +26,7 @@ contract Preview is Script {
         Shapes shapes = new Shapes{value: Denominations.UNIT}(fee, address(0xFEE), address(shapeRenderer), 0);
         shapes.setCollection(address(new ShapeCollection(shapeRenderer, shapes)));
         ShapePackRenderer renderer = new ShapePackRenderer(address(shapes));
-        ShapePacks packs = new ShapePacks(address(shapes), address(renderer), USER);
+        ShapePacks packs = new ShapePacks(address(shapes), address(renderer), USER, "Shape Packs", "PACK", 2);
 
         uint256[] memory none;
         uint32[12] memory sizes = [uint32(1), 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12];

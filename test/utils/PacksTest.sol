@@ -38,7 +38,7 @@ abstract contract PacksTest is Test, IERC721Receiver {
         shapes.setCollection(address(collection));
 
         packRenderer = new ShapePackRenderer(address(shapes));
-        packs = new ShapePacks(address(shapes), address(packRenderer), admin);
+        packs = new ShapePacks(address(shapes), address(packRenderer), admin, "Shape Packs", "PACK", 2);
 
         vm.deal(alice, 100_000 ether);
         vm.deal(bob, 100_000 ether);

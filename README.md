@@ -1,3 +1,11 @@
+# Draw Packs
+
+Fork of [shape-packs](https://github.com/ripe0x/shape-packs) for the Draw Shapes pool. One change: the
+pack minimum is a constructor parameter in units of `shapes.unit()`, deployed at two units
+(0.02 ETH on mainnet). Collection name `Draw Packs`, symbol `DRAW`.
+
+---
+
 # Shape Packs
 
 Bundle Shapes into one token. Its value is exactly theirs.

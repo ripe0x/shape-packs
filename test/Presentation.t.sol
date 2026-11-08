@@ -592,6 +592,15 @@ contract PresentationTest is MetadataHelpers {
         assertEq(_count(logs, IShapePacks.BatchMetadataUpdate.selector), 0);
     }
 
+    function test_PrefixEndingInHashGetsNoSecondHash() public {
+        uint256 packId = _pack();
+        vm.prank(admin);
+        packs.setMetadataCopy("Pack #", "A description.");
+        string memory json = decodeJson(packs.tokenURI(packId));
+        assertTrue(contains(json, unicode' ETH · Pack #1"'), "single hash");
+        assertFalse(contains(json, "##"), "no double hash");
+    }
+
     function test_SetMetadataCopyAcceptsEmptyPrefix() public {
         uint256 packId = _pack();
         vm.prank(admin);

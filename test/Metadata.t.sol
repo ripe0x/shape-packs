@@ -194,9 +194,7 @@ contract MetadataTest is MetadataHelpers {
         string memory total = FixedPoint.fmt(3 * amountAt(0) + amountAt(1));
         assertTrue(contains(json, string.concat('"name":"', total, unicode' ETH · Shape Pack #1"')), "name");
 
-        string memory makeup = string.concat(
-            entry(3, 0), ", ", entry(1, 1), ". ", total, " ETH total."
-        );
+        string memory makeup = string.concat(entry(3, 0), ", ", entry(1, 1), ". ", total, " ETH total.");
         assertTrue(
             contains(json, string.concat('"description":"', packs.description(), " ", makeup, '"')),
             "description"

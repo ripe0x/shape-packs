@@ -197,7 +197,8 @@ contract PresentationTest is MetadataHelpers {
     function test_ConstructorEmitsAdminTransferred() public {
         vm.expectEmit(true, true, false, false);
         emit IShapePacks.AdminTransferred(address(0), admin);
-        ShapePacks fresh = new ShapePacks(address(shapes), address(packRenderer), admin, "Shape Packs", "PACK", 2);
+        ShapePacks fresh =
+            new ShapePacks(address(shapes), address(packRenderer), admin, "Shape Packs", "PACK", 2);
         assertEq(fresh.admin(), admin);
     }
 
@@ -265,7 +266,8 @@ contract PresentationTest is MetadataHelpers {
         assertEq(packs.MIN_PACK_VALUE(), 2 * unit());
         if (unit() == 0.01 ether) assertEq(packs.MIN_PACK_VALUE(), 0.02 ether);
         // Read from Shapes at construction, so a fresh deployment agrees.
-        ShapePacks fresh = new ShapePacks(address(shapes), address(packRenderer), admin, "Shape Packs", "PACK", 2);
+        ShapePacks fresh =
+            new ShapePacks(address(shapes), address(packRenderer), admin, "Shape Packs", "PACK", 2);
         assertEq(fresh.MIN_PACK_VALUE(), 2 * IShapes(address(shapes)).unit());
     }
 
@@ -562,7 +564,11 @@ contract PresentationTest is MetadataHelpers {
 
         string memory json = decodeJson(packs.tokenURI(packId));
         assertTrue(
-            contains(json, string.concat('"name":"', FixedPoint.fmt(3 * amountAt(0)), unicode' ETH · Pack No. #1"')), "name"
+            contains(
+                json,
+                string.concat('"name":"', FixedPoint.fmt(3 * amountAt(0)), unicode' ETH · Pack No. #1"')
+            ),
+            "name"
         );
         assertTrue(
             contains(json, string.concat('"description":"', desc, " ", entry(3, 0), ". ")),
@@ -616,7 +622,7 @@ contract PresentationTest is MetadataHelpers {
         // A pack still renders with the largest copy.
         uint256 packId = _pack();
         string memory json = decodeJson(packs.tokenURI(packId));
-        assertTrue(contains(json, string.concat(unicode' ETH · ', p64, '#1"')));
+        assertTrue(contains(json, string.concat(unicode" ETH · ", p64, '#1"')));
         assertTrue(startsWith(svgOfJson(json), "<svg"));
     }
 
@@ -713,7 +719,7 @@ contract PresentationTest is MetadataHelpers {
         // The JSON stays parseable around it: the document still decodes and still closes.
         uint256 packId = _pack();
         string memory json = decodeJson(packs.tokenURI(packId));
-        assertTrue(contains(json, string.concat(unicode' ETH · ', string(prefix), '#1"')));
+        assertTrue(contains(json, string.concat(unicode" ETH · ", string(prefix), '#1"')));
         assertTrue(contains(json, string.concat('"description":"', string(all), " ")));
         assertTrue(endsWith(json, "]}"));
     }

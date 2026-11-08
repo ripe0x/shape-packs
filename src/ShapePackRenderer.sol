@@ -95,12 +95,15 @@ contract ShapePackRenderer is IShapePackRenderer, IERC165 {
         return interfaceId == type(IERC165).interfaceId || interfaceId == type(IShapePackRenderer).interfaceId;
     }
 
-    /// @dev name, description and image, then the attribute list.
+    /// @dev name (`0.02 ETH · Shape Pack #9`), description and image, then the attribute list.
     function _json(PackRenderInput calldata input) private view returns (string memory) {
         return string(
             abi.encodePacked(
                 '{"name":"',
+                FixedPoint.fmt(input.valueWei),
+                unicode" ETH · ",
                 input.tokenNamePrefix,
+                "#",
                 FixedPoint.toString(input.packId),
                 '","description":"',
                 input.description,

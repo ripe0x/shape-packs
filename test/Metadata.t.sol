@@ -144,11 +144,6 @@ abstract contract MetadataHelpers is PacksTest {
         return svgOfJson(decodeJson(packs.tokenURI(packId)));
     }
 
-    /// @dev `Shape Pack 1`-style name the fixture's default copy produces.
-    function expectedName(uint256 packId) internal pure returns (string memory) {
-        return string.concat('"name":"Shape Pack ', FixedPoint.toString(packId), '"');
-    }
-
     /// @dev `<count> x <denomination> ETH`, the way the renderer prints one makeup entry.
     function entry(uint256 count, uint256 index) internal pure returns (string memory) {
         return string.concat(FixedPoint.toString(count), " x ", FixedPoint.fmt(amountAt(index)), " ETH");
@@ -196,10 +191,11 @@ contract MetadataTest is MetadataHelpers {
         assertEq(bytes(json)[0], bytes1("{"));
         assertEq(bytes(json)[bytes(json).length - 1], bytes1("}"));
 
-        assertTrue(contains(json, '"name":"Shape Pack 1"'), "name");
+        string memory total = FixedPoint.fmt(3 * amountAt(0) + amountAt(1));
+        assertTrue(contains(json, string.concat('"name":"', total, unicode' ETH · Shape Pack #1"')), "name");
 
         string memory makeup = string.concat(
-            entry(3, 0), ", ", entry(1, 1), ". ", FixedPoint.fmt(3 * amountAt(0) + amountAt(1)), " ETH total."
+            entry(3, 0), ", ", entry(1, 1), ". ", total, " ETH total."
         );
         assertTrue(
             contains(json, string.concat('"description":"', packs.description(), " ", makeup, '"')),

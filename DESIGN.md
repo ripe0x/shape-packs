@@ -428,7 +428,7 @@ plain black backs. The current renderer caps artwork at twelve faces. `tokenURI`
 scans the full contents list, and ranking cost also grows with the selected preview limit. An
 excessive admin-set limit can make metadata reads too expensive, so test gas before raising it.
 
-**Name and description.** `Shape Pack 12`. Description: the shared editable copy, then the makeup
+**Name and description.** `0.08 ETH · Shape Pack #12`: the pack's value first, then the editable prefix and id. Description: the shared editable copy, then the makeup
 in words: `3 x 0.01 ETH, 1 x 0.05 ETH. 0.08 ETH total.`, with an ASCII `x` so the JSON stays
 byte-safe, using `FixedPoint.fmt` from Shapes so numbers print the way Shapes prints them.
 
@@ -523,7 +523,7 @@ and out of the pack contract; `packOf` makes the join exact.
 4. **Additions are owner-only.** Contents only grow.
 5. **Three rendered cards, creator order.**
 6. **Presentation admin retained**, mirroring Shapes: renderer, copy, one lock, renounceable.
-7. **Name and symbol:** `Shape Packs` / `PACK`; token name `Shape Pack N`.
+7. **Name and symbol:** `Shape Packs` / `PACK`; token name `<value> ETH · Shape Pack #N`.
 8. **Not claimed:** `IShapePositionResolver`. **Not built:** blind packs, nested packs, removal.
 9. **Owner-only merges:** a target pack survives; source pack tokens burn and their Shapes join the
    target without changing Shapes custody. This is not pack nesting.

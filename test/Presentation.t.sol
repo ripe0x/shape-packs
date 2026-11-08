@@ -197,7 +197,8 @@ contract PresentationTest is MetadataHelpers {
     function test_ConstructorEmitsAdminTransferred() public {
         vm.expectEmit(true, true, false, false);
         emit IShapePacks.AdminTransferred(address(0), admin);
-        ShapePacks fresh = new ShapePacks(address(shapes), address(packRenderer), admin, "Shape Packs", "PACK", 2);
+        ShapePacks fresh =
+            new ShapePacks(address(shapes), address(packRenderer), admin, "Shape Packs", "PACK", 2);
         assertEq(fresh.admin(), admin);
     }
 
@@ -265,7 +266,8 @@ contract PresentationTest is MetadataHelpers {
         assertEq(packs.MIN_PACK_VALUE(), 2 * unit());
         if (unit() == 0.01 ether) assertEq(packs.MIN_PACK_VALUE(), 0.02 ether);
         // Read from Shapes at construction, so a fresh deployment agrees.
-        ShapePacks fresh = new ShapePacks(address(shapes), address(packRenderer), admin, "Shape Packs", "PACK", 2);
+        ShapePacks fresh =
+            new ShapePacks(address(shapes), address(packRenderer), admin, "Shape Packs", "PACK", 2);
         assertEq(fresh.MIN_PACK_VALUE(), 2 * IShapes(address(shapes)).unit());
     }
 
@@ -561,12 +563,18 @@ contract PresentationTest is MetadataHelpers {
         assertEq(packs.description(), desc);
 
         string memory json = decodeJson(packs.tokenURI(packId));
-        assertTrue(contains(json, '"name":"Pack No. 1"'), "name");
+        assertTrue(
+            contains(
+                json,
+                string.concat('"name":"', FixedPoint.fmt(3 * amountAt(0)), unicode' ETH · Pack No. #1"')
+            ),
+            "name"
+        );
         assertTrue(
             contains(json, string.concat('"description":"', desc, " ", entry(3, 0), ". ")),
             "description then makeup"
         );
-        assertFalse(contains(json, "Shape Pack 1"), "old name gone");
+        assertFalse(contains(json, "Shape Pack"), "old name gone");
 
         string memory collectionJson = decodeJson(packs.contractURI());
         assertTrue(contains(collectionJson, string.concat('"description":"', desc, '"')));
@@ -584,13 +592,22 @@ contract PresentationTest is MetadataHelpers {
         assertEq(_count(logs, IShapePacks.BatchMetadataUpdate.selector), 0);
     }
 
+    function test_PrefixEndingInHashGetsNoSecondHash() public {
+        uint256 packId = _pack();
+        vm.prank(admin);
+        packs.setMetadataCopy("Pack #", "A description.");
+        string memory json = decodeJson(packs.tokenURI(packId));
+        assertTrue(contains(json, unicode' ETH · Pack #1"'), "single hash");
+        assertFalse(contains(json, "##"), "no double hash");
+    }
+
     function test_SetMetadataCopyAcceptsEmptyPrefix() public {
         uint256 packId = _pack();
         vm.prank(admin);
         packs.setMetadataCopy("", "Only a description.");
         assertEq(packs.tokenNamePrefix(), "");
         string memory json = decodeJson(packs.tokenURI(packId));
-        assertTrue(contains(json, '"name":"1"'), "name is just the id");
+        assertTrue(contains(json, unicode' ETH · #1"'), "name is the value and the id");
     }
 
     function test_SetMetadataCopyAcceptsEmptyDescription() public {
@@ -614,7 +631,7 @@ contract PresentationTest is MetadataHelpers {
         // A pack still renders with the largest copy.
         uint256 packId = _pack();
         string memory json = decodeJson(packs.tokenURI(packId));
-        assertTrue(contains(json, string.concat('"name":"', p64, "1")));
+        assertTrue(contains(json, string.concat(unicode" ETH · ", p64, '#1"')));
         assertTrue(startsWith(svgOfJson(json), "<svg"));
     }
 
@@ -711,7 +728,7 @@ contract PresentationTest is MetadataHelpers {
         // The JSON stays parseable around it: the document still decodes and still closes.
         uint256 packId = _pack();
         string memory json = decodeJson(packs.tokenURI(packId));
-        assertTrue(contains(json, string.concat('"name":"', string(prefix), "1")));
+        assertTrue(contains(json, string.concat(unicode" ETH · ", string(prefix), '#1"')));
         assertTrue(contains(json, string.concat('"description":"', string(all), " ")));
         assertTrue(endsWith(json, "]}"));
     }

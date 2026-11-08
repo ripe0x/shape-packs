@@ -166,7 +166,7 @@ contract ForkTest is Test {
         // Metadata through the live, deployed Shapes renderer.
         string memory json = _json(packId);
         assertEq(bytes(json)[0], bytes1("{"));
-        assertTrue(_contains(json, '"name":"Shape Pack 1"'), "name");
+        assertTrue(_contains(json, unicode'"name":"0.03 ETH · Shape Pack #1"'), "name");
         assertTrue(_contains(json, "3 x 0.01 ETH. 0.03 ETH total."), "makeup sentence");
         assertTrue(_contains(json, '{"trait_type":"Shapes","value":3}'));
         assertTrue(_contains(json, '{"trait_type":"Value","value":"0.03 ETH"}'));

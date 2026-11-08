@@ -95,12 +95,15 @@ contract ShapePackRenderer is IShapePackRenderer, IERC165 {
         return interfaceId == type(IERC165).interfaceId || interfaceId == type(IShapePackRenderer).interfaceId;
     }
 
-    /// @dev name, description and image, then the attribute list.
+    /// @dev name (`0.02 ETH · Shape Pack #9`), description and image, then the attribute list.
     function _json(PackRenderInput calldata input) private view returns (string memory) {
         return string(
             abi.encodePacked(
                 '{"name":"',
+                FixedPoint.fmt(input.valueWei),
+                unicode" ETH · ",
                 input.tokenNamePrefix,
+                _idMark(bytes(input.tokenNamePrefix)),
                 FixedPoint.toString(input.packId),
                 '","description":"',
                 input.description,
@@ -113,6 +116,13 @@ contract ShapePackRenderer is IShapePackRenderer, IERC165 {
                 "]}"
             )
         );
+    }
+
+    /// @dev The `#` that sits between the name prefix and the pack id, omitted when the admin-set
+    ///      prefix already ends in one, so a `Pack #` prefix never renders `##`.
+    function _idMark(bytes calldata namePrefix) private pure returns (string memory) {
+        if (namePrefix.length != 0 && namePrefix[namePrefix.length - 1] == "#") return "";
+        return "#";
     }
 
     /// @dev `3 x 0.01 ETH, 1 x 0.05 ETH. 0.08 ETH total.` The ASCII `x` keeps the JSON byte-safe.

@@ -87,3 +87,11 @@ The focused verifier tests passed (11 tests). No mainnet source submission has o
 Next: the owner submits mainnet source verification, then confirms Etherscan reports both
 contracts verified. Update event consumers and the website merge flow before a public product
 release.
+
+On November 9, 2026 the admin pointed mainnet ShapePacks at the value-name ShapePackRenderer
+`0x934c491dda49c8058347c3fca191852d54705645` (Etherscan verified), which also serves ApeBall's
+Draw Packs; pack names now read `<value> ETH · Shape Pack #<id>` and nothing else changed. The
+swap ran from collection-games `script/SwapRenderers.s.sol` in blocks 26378700-26378706.
+`deployments/1.json` keeps `shapePackRenderer` as the constructor-time renderer because
+`verify_renderer.py` rebuilds ShapePacks' constructor arguments from it; read the live renderer
+from `ShapePacks.renderer()`.
